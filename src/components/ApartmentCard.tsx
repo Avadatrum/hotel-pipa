@@ -49,7 +49,8 @@ export function ApartmentCard({ aptNumber, data, onSuccess, showToast }: Apartme
       setLostTowels(0);
       onSuccess?.();
     } else {
-      showToast(`❌ Erro no check-out: ${result.error}`, 'error');
+      const errorMsg = 'error' in result ? result.error : 'Erro desconhecido';
+      showToast(`❌ Erro no check-out: ${errorMsg}`, 'error');
     }
   };
 

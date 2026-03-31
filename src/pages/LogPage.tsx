@@ -1,7 +1,7 @@
 // src/pages/LogPage.tsx
 import { useState, useEffect } from 'react';
 import { db } from '../services/firebase';
-import { collection, onSnapshot, query, orderBy, limit, deleteDoc, doc, writeBatch } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit, doc, writeBatch } from 'firebase/firestore';
 import type { LogEntry } from '../types';
 
 interface LogPageProps {

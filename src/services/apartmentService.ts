@@ -1,6 +1,6 @@
 // src/services/apartmentService.ts
 import { db } from './firebase';
-import { doc, updateDoc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import type { Apartment } from '../types';
 
 // Atualiza um apartamento no Firebase
@@ -15,9 +15,8 @@ export async function doCheckin(
   guestName: string, 
   pax: number
 ) {
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const dateStr = now.toLocaleDateString('pt-BR');
+  // const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  // const dateStr = now.toLocaleDateString('pt-BR');
   
   // Atualiza o apartamento
   await updateApartment(aptNumber, {
@@ -36,9 +35,8 @@ export async function doCheckin(
 
 // Função de Check-out
 export async function doCheckout(aptNumber: number, lostTowels: number) {
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const dateStr = now.toLocaleDateString('pt-BR');
+  // const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  // const dateStr = now.toLocaleDateString('pt-BR');
   
   // Busca o apartamento atual para saber quantas toalhas tinha
   const aptRef = doc(db, 'apartments', String(aptNumber));
@@ -115,6 +113,3 @@ async function addLoss(apt: number, block: string, guest: string, lost: number) 
     ts: Date.now()
   });
 }
-
-// Import necessário para o getDoc
-import { getDoc } from 'firebase/firestore';

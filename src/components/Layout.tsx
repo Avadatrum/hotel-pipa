@@ -1,5 +1,6 @@
 // src/components/Layout.tsx
-import { ReactNode, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { useApartments } from '../hooks/useApartments';
 
 interface LayoutProps {

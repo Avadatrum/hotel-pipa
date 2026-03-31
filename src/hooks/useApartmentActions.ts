@@ -1,6 +1,6 @@
 // src/hooks/useApartmentActions.ts
 import { useState } from 'react';
-import { doCheckin, doCheckout, adjustItem, updateApartment } from '../services/apartmentService';
+import { doCheckin, doCheckout, adjustItem } from '../services/apartmentService';
 
 export function useApartmentActions() {
   const [loading, setLoading] = useState(false);

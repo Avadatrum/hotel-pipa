@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useApartments } from '../hooks/useApartments';
 import { db } from '../services/firebase';
-import { collection, onSnapshot, query, orderBy, limit, doc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit, doc, setDoc } from 'firebase/firestore';
 import type { LossEntry, LogEntry } from '../types';
 
 interface DashboardPageProps {
