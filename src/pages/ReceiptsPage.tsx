@@ -49,9 +49,13 @@ export function ReceiptsPage() {
 
     const html = `
       <div class="text-center mb-3">
-        <div class="text-4xl mb-1">🌴</div>
-        <div class="text-xs uppercase tracking-wider text-gray-500">Pipa · RN · Brasil</div>
-      </div>
+  <img 
+    src="https://i.imgur.com/A4vP7cE.png" 
+    alt="Logo Hotel da Pipa" 
+    class="h-16 mx-auto mb-2"
+  />
+  <div class="text-xs uppercase tracking-wider text-gray-500">Pipa · RN · Brasil</div>
+</div>
       <hr class="my-2 border-gray-300">
       <div class="text-center mb-4">
         <div class="text-xl font-bold uppercase tracking-wider">R E C I B O</div>

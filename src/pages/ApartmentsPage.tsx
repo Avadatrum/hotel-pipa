@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { useApartments } from '../hooks/useApartments';
 import { ApartmentCard } from '../components/ApartmentCard';
-import { useToast } from '../hooks/useToast';
 
 const BLOCKS = [
   { name: 'Frente Mar', apts: [1, 2, 3, 4, 5, 6, 7] },
@@ -18,7 +17,6 @@ type FilterType = 'all' | 'occupied' | 'vacant' | 'withTowels' | 'withoutTowels'
 
 export function ApartmentsPage() {
   const { apartments, loading } = useApartments();
-  const { showToast } = useToast();
   const [filter, setFilter] = useState<FilterType>('all');
 
   // Função que verifica se o apartamento deve ser mostrado
