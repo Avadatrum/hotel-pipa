@@ -2,10 +2,7 @@
 import { useState } from 'react';
 import { useApartments } from '../hooks/useApartments';
 import { ApartmentCard } from '../components/ApartmentCard';
-
-interface ApartmentsPageProps {
-  showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
-}
+import { useToast } from '../hooks/useToast';
 
 const BLOCKS = [
   { name: 'Frente Mar', apts: [1, 2, 3, 4, 5, 6, 7] },
@@ -19,8 +16,9 @@ const BLOCKS = [
 // Tipos de filtro disponíveis
 type FilterType = 'all' | 'occupied' | 'vacant' | 'withTowels' | 'withoutTowels' | 'withChips' | 'withoutChips';
 
-export function ApartmentsPage({ showToast }: ApartmentsPageProps) {
+export function ApartmentsPage() {
   const { apartments, loading } = useApartments();
+  const { showToast } = useToast();
   const [filter, setFilter] = useState<FilterType>('all');
 
   // Função que verifica se o apartamento deve ser mostrado
@@ -60,7 +58,7 @@ export function ApartmentsPage({ showToast }: ApartmentsPageProps) {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="text-4xl mb-2 animate-pulse">🌴</div>
-          <p className="text-gray-500">Carregando apartamentos...</p>
+          <p className="text-gray-500 dark:text-gray-400">Carregando apartamentos...</p>
         </div>
       </div>
     );
@@ -94,13 +92,13 @@ export function ApartmentsPage({ showToast }: ApartmentsPageProps) {
       }
     }
     
-    return `${baseClass} bg-gray-100 text-gray-700 hover:bg-gray-200 hover:scale-105`;
+    return `${baseClass} bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 hover:scale-105`;
   };
 
   return (
     <div className="space-y-5">
       {/* Filtros - agora com mais opções */}
-      <div className="bg-white rounded-lg shadow-sm p-3">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3">
         <div className="flex flex-wrap gap-2">
           {filterButtons.map(btn => (
             <button
@@ -142,9 +140,9 @@ export function ApartmentsPage({ showToast }: ApartmentsPageProps) {
         
         {/* Resumo rápido do filtro atual */}
         {filter !== 'all' && (
-          <div className="mt-3 pt-2 border-t border-gray-100 text-xs text-gray-500 flex items-center gap-2">
+          <div className="mt-3 pt-2 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
             <span>🔍 Filtro ativo:</span>
-            <span className="font-medium text-gray-700">
+            <span className="font-medium text-gray-700 dark:text-gray-200">
               {filterButtons.find(b => b.id === filter)?.label}
             </span>
             <button
@@ -166,11 +164,11 @@ export function ApartmentsPage({ showToast }: ApartmentsPageProps) {
         if (blockApts.length === 0) return null;
 
         return (
-          <div key={block.name} className="bg-white rounded-lg shadow p-4">
+          <div key={block.name} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-1 h-6 bg-yellow-500 rounded"></div>
-              <h2 className="text-lg font-semibold text-gray-800">{block.name}</h2>
-              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-white">{block.name}</h2>
+              <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded">
                 {blockApts.length} apts
               </span>
             </div>
@@ -186,7 +184,6 @@ export function ApartmentsPage({ showToast }: ApartmentsPageProps) {
                     aptNumber={aptNum}
                     data={apt}
                     onSuccess={() => {}}
-                    showToast={showToast}
                   />
                 );
               })}
@@ -199,10 +196,10 @@ export function ApartmentsPage({ showToast }: ApartmentsPageProps) {
       {BLOCKS.every(block => 
         block.apts.filter(aptNum => apartments[aptNum] && shouldShowApt(aptNum)).length === 0
       ) && (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
           <div className="text-5xl mb-3">🔍</div>
-          <h3 className="text-lg font-medium text-gray-700 mb-1">Nenhum apartamento encontrado</h3>
-          <p className="text-sm text-gray-500">
+          <h3 className="text-lg font-medium text-gray-700 dark:text-gray-200 mb-1">Nenhum apartamento encontrado</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Nenhum apartamento corresponde ao filtro "{filterButtons.find(b => b.id === filter)?.label}"
           </p>
           <button

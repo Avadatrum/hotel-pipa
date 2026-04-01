@@ -3,7 +3,59 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Animação para o Toast */
+/* Cores customizadas para dark mode */
+@layer base {
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f3f4f6;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --border-color: #e5e7eb;
+  }
+  
+  .dark {
+    --bg-primary: #1f2937;
+    --bg-secondary: #111827;
+    --text-primary: #f9fafb;
+    --text-secondary: #9ca3af;
+    --border-color: #374151;
+  }
+}
+
+/* Aplicar cores usando Tailwind classes */
+.dark .bg-white {
+  background-color: #1f2937 !important;
+}
+
+.dark .bg-gray-100 {
+  background-color: #111827 !important;
+}
+
+.dark .bg-gray-50 {
+  background-color: #1f2937 !important;
+}
+
+.dark .border-gray-200 {
+  border-color: #374151 !important;
+}
+
+.dark .text-gray-800 {
+  color: #f9fafb !important;
+}
+
+.dark .text-gray-600 {
+  color: #9ca3af !important;
+}
+
+.dark .text-gray-500 {
+  color: #9ca3af !important;
+}
+
+.dark .text-gray-400 {
+  color: #6b7280 !important;
+}
+
+/* Animações */
 @keyframes slide-up {
   from {
     opacity: 0;
@@ -19,7 +71,6 @@
   animation: slide-up 0.3s ease-out;
 }
 
-/* Animação para o overlay do modal */
 @keyframes fade-in {
   from {
     opacity: 0;

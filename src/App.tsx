@@ -8,6 +8,7 @@ import { LogPage } from './pages/LogPage';
 import { ReceiptsPage } from './pages/ReceiptsPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { useToast } from './hooks/useToast';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('apts');
@@ -34,21 +35,21 @@ function App() {
         return <DocumentsPage showToast={showToast} />;
       default:
         return (
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <h2 className="text-xl font-bold mb-2">🚧 Em construção</h2>
-            <p className="text-gray-600">Página em desenvolvimento</p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
+            <h2 className="text-xl font-bold mb-2 text-gray-800 dark:text-white">🚧 Em construção</h2>
+            <p className="text-gray-600 dark:text-gray-400">Página em desenvolvimento</p>
           </div>
         );
     }
   };
 
   return (
-    <>
+    <ThemeProvider>
       <Layout currentPage={currentPage} onNavigate={handleNavigate}>
         {renderPage()}
       </Layout>
       <ToastContainer />
-    </>
+    </ThemeProvider>
   );
 }
 

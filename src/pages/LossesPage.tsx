@@ -2,13 +2,11 @@
 import { useState, useEffect } from 'react';
 import { db } from '../services/firebase';
 import { collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { useToast } from '../hooks/useToast';
 import type { LossEntry } from '../types';
 
-interface LossesPageProps {
-  showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
-}
-
-export function LossesPage({ showToast }: LossesPageProps) {
+export function LossesPage() {
+  const { showToast } = useToast();
   const [losses, setLosses] = useState<LossEntry[]>([]);
   const [filter, setFilter] = useState('');
 
@@ -55,8 +53,8 @@ export function LossesPage({ showToast }: LossesPageProps) {
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Registro de Perdas</h1>
-          <p className="text-gray-500 text-sm mt-1">Total acumulado: <strong className="text-red-600">{totalLost}</strong> toalhas perdidas</p>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Registro de Perdas</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Total acumulado: <strong className="text-red-600 dark:text-red-400">{totalLost}</strong> toalhas perdidas</p>
         </div>
         <button
           onClick={exportCSV}
@@ -66,43 +64,43 @@ export function LossesPage({ showToast }: LossesPageProps) {
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="p-4 border-b">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <input
             type="text"
             placeholder="Filtrar por apto ou hóspede..."
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           />
         </div>
 
         {filteredLosses.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
             ✅ Nenhuma perda registrada
           </div>
         ) : (
           <div className="overflow-x-auto -mx-4 px-4">
             <table className="w-full min-w-[500px]">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Apto</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bloco</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hóspede</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Perdas</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"></th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Data</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Apto</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Bloco</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Hóspede</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Perdas</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredLosses.map(loss => (
-                  <tr key={loss.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-600">{loss.date}</td>
-                    <td className="px-4 py-3 text-sm font-medium">Apto {loss.apt}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{loss.block || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{loss.guest || '-'}</td>
+                  <tr key={loss.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{loss.date}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-800 dark:text-gray-200">Apto {loss.apt}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{loss.block || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{loss.guest || '-'}</td>
                     <td className="px-4 py-3">
-                      <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">
+                      <span className="bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400 px-2 py-1 rounded text-xs font-bold">
                         -{loss.lost} toalha(s)
                       </span>
                     </td>

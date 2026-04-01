@@ -2,20 +2,24 @@
 import { useState } from 'react';
 import type { Apartment } from '../types';
 import { useApartmentActions } from '../hooks/useApartmentActions';
+import { ApartmentHistoryModal } from './ApartmentHistoryModal';
+import { useToast } from '../hooks/useToast';
 
 interface ApartmentCardProps {
   aptNumber: number;
   data: Apartment;
   onSuccess?: () => void;
-  showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
 }
 
-export function ApartmentCard({ aptNumber, data, onSuccess, showToast }: ApartmentCardProps) {
+export function ApartmentCard({ aptNumber, data, onSuccess }: ApartmentCardProps) {
+  const { showToast } = useToast();
   const [showCheckinModal, setShowCheckinModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [guestName, setGuestName] = useState('');
   const [pax, setPax] = useState(1);
   const [lostTowels, setLostTowels] = useState(0);
+  
   
   const { loading, handleCheckin, handleCheckout, handleAdjust } = useApartmentActions();
 
@@ -72,12 +76,12 @@ export function ApartmentCard({ aptNumber, data, onSuccess, showToast }: Apartme
       <div className={`
         border rounded-lg p-3 transition-all hover:shadow-md
         ${data.occupied 
-          ? 'border-blue-400 bg-blue-50' 
-          : 'border-gray-200 bg-white'
+          ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/30' 
+          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
         }
       `}>
         <div className="flex justify-between items-start mb-2">
-          <span className="text-xl font-bold text-gray-700">
+          <span className="text-xl font-bold text-gray-700 dark:text-gray-200">
             {aptNumber}
           </span>
           <span className={`
@@ -87,25 +91,25 @@ export function ApartmentCard({ aptNumber, data, onSuccess, showToast }: Apartme
         </div>
         
         {data.occupied && data.guest && (
-          <div className="text-xs text-gray-600 truncate mb-1">
+          <div className="text-xs text-gray-600 dark:text-gray-300 truncate mb-1">
             👤 {data.guest}
           </div>
         )}
         
         {/* Indicadores visuais de toalhas e fichas */}
         <div className="flex items-center gap-1 mb-2">
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-gray-500 dark:text-gray-400">
             {data.block}
           </div>
           {data.occupied && (
             <div className="flex gap-1 ml-auto">
               {data.towels > 0 && (
-                <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full" title={`${data.towels} toalha(s)`}>
+                <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300 px-1.5 py-0.5 rounded-full" title={`${data.towels} toalha(s)`}>
                   🧺 {data.towels}
                 </span>
               )}
               {data.chips > 0 && (
-                <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full" title={`${data.chips} ficha(s)`}>
+                <span className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 px-1.5 py-0.5 rounded-full" title={`${data.chips} ficha(s)`}>
                   🎫 {data.chips}
                 </span>
               )}
@@ -116,7 +120,7 @@ export function ApartmentCard({ aptNumber, data, onSuccess, showToast }: Apartme
         {data.occupied && (
           <div className="space-y-1 mb-2">
             <div className="flex items-center justify-between text-xs">
-              <span>🎫 Fichas</span>
+              <span className="dark:text-gray-300">🎫 Fichas</span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => onAdjust('chips', -1)}
@@ -125,7 +129,7 @@ export function ApartmentCard({ aptNumber, data, onSuccess, showToast }: Apartme
                 >
                   -
                 </button>
-                <span className="font-bold w-6 text-center text-base">{data.chips}</span>
+                <span className="font-bold w-6 text-center text-base dark:text-white">{data.chips}</span>
                 <button
                   onClick={() => onAdjust('chips', 1)}
                   disabled={loading}
@@ -136,7 +140,7 @@ export function ApartmentCard({ aptNumber, data, onSuccess, showToast }: Apartme
               </div>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span>🧺 Toalhas</span>
+              <span className="dark:text-gray-300">🧺 Toalhas</span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => onAdjust('towels', -1)}
@@ -145,7 +149,7 @@ export function ApartmentCard({ aptNumber, data, onSuccess, showToast }: Apartme
                 >
                   -
                 </button>
-                <span className="font-bold w-6 text-center text-base">{data.towels}</span>
+                <span className="font-bold w-6 text-center text-base dark:text-white">{data.towels}</span>
                 <button
                   onClick={() => onAdjust('towels', 1)}
                   disabled={loading}
@@ -178,28 +182,36 @@ export function ApartmentCard({ aptNumber, data, onSuccess, showToast }: Apartme
             Check-out
           </button>
         )}
+
+        {/* Botão de Histórico */}
+        <button
+          onClick={() => setShowHistoryModal(true)}
+          className="w-full mt-1 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 rounded text-xs hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
+          📋 Histórico
+        </button>
       </div>
 
       {/* Modal de Check-in */}
       {showCheckinModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-5 w-full max-w-sm mx-auto animate-slide-up">
-            <h2 className="text-lg font-bold mb-3">Check-in Apto {aptNumber}</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-5 w-full max-w-sm mx-auto animate-slide-up">
+            <h2 className="text-lg font-bold mb-3 text-gray-800 dark:text-white">Check-in Apto {aptNumber}</h2>
             
             <div className="mb-3">
-              <label className="block text-sm font-medium mb-1">Nome do hóspede *</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Nome do hóspede *</label>
               <input
                 type="text"
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="Digite o nome"
                 autoFocus
               />
             </div>
             
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Número de hóspedes</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Número de hóspedes</label>
               <div className="flex gap-2">
                 {[1, 2, 3, 4].map(num => (
                   <button
@@ -208,7 +220,7 @@ export function ApartmentCard({ aptNumber, data, onSuccess, showToast }: Apartme
                     className={`flex-1 py-2 rounded-lg border transition-colors ${
                       pax === num 
                         ? 'bg-blue-600 text-white border-blue-600' 
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
                     }`}
                   >
                     {num}
@@ -220,7 +232,7 @@ export function ApartmentCard({ aptNumber, data, onSuccess, showToast }: Apartme
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setShowCheckinModal(false)}
-                className="flex-1 py-2 border rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex-1 py-2 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600"
               >
                 Cancelar
               </button>
@@ -239,39 +251,39 @@ export function ApartmentCard({ aptNumber, data, onSuccess, showToast }: Apartme
       {/* Modal de Check-out */}
       {showCheckoutModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-5 w-full max-w-sm mx-auto animate-slide-up">
-            <h2 className="text-lg font-bold mb-3">Check-out Apto {aptNumber}</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-5 w-full max-w-sm mx-auto animate-slide-up">
+            <h2 className="text-lg font-bold mb-3 text-gray-800 dark:text-white">Check-out Apto {aptNumber}</h2>
             
             <div className="mb-4 space-y-2">
-              <p className="text-sm text-gray-600">
-                Hóspede: <strong>{data.guest}</strong>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Hóspede: <strong className="dark:text-white">{data.guest}</strong>
               </p>
-              <p className="text-sm text-gray-600">
-                Fichas restantes: <strong>{data.chips}</strong>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Fichas restantes: <strong className="dark:text-white">{data.chips}</strong>
               </p>
-              <p className="text-sm text-gray-600">
-                Toalhas com hóspede: <strong>{data.towels}</strong>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Toalhas com hóspede: <strong className="dark:text-white">{data.towels}</strong>
               </p>
               
-              <label className="block text-sm font-medium mt-3 mb-1">
+              <label className="block text-sm font-medium mt-3 mb-1 text-gray-700 dark:text-gray-300">
                 Toalhas não devolvidas (perdas):
               </label>
               <input
                 type="number"
                 value={lostTowels}
                 onChange={(e) => setLostTowels(Math.min(Math.max(0, parseInt(e.target.value) || 0), data.towels))}
-                className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 min="0"
                 max={data.towels}
               />
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 Máximo: {data.towels} toalhas
               </p>
             </div>
             
             {lostTowels > 0 && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-700">
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-sm text-red-700 dark:text-red-400">
                   ⚠️ Serão registradas {lostTowels} toalha(s) como PERDA.
                 </p>
               </div>
@@ -280,7 +292,7 @@ export function ApartmentCard({ aptNumber, data, onSuccess, showToast }: Apartme
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setShowCheckoutModal(false)}
-                className="flex-1 py-2 border rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex-1 py-2 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600"
               >
                 Cancelar
               </button>
@@ -295,6 +307,15 @@ export function ApartmentCard({ aptNumber, data, onSuccess, showToast }: Apartme
           </div>
         </div>
       )}
+
+      {/* Modal de Histórico */}
+      <ApartmentHistoryModal
+        isOpen={showHistoryModal}
+        aptNumber={aptNumber}
+        guestName={data.guest}
+        blockName={data.block}
+        onClose={() => setShowHistoryModal(false)}
+      />
     </>
   );
 }

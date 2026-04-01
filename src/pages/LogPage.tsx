@@ -2,13 +2,11 @@
 import { useState, useEffect } from 'react';
 import { db } from '../services/firebase';
 import { collection, onSnapshot, query, orderBy, limit, doc, writeBatch } from 'firebase/firestore';
+import { useToast } from '../hooks/useToast';
 import type { LogEntry } from '../types';
 
-interface LogPageProps {
-  showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
-}
-
-export function LogPage({ showToast }: LogPageProps) {
+export function LogPage() {
+  const { showToast } = useToast();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [filterApt, setFilterApt] = useState('');
   const [filterType, setFilterType] = useState('');
@@ -60,10 +58,10 @@ export function LogPage({ showToast }: LogPageProps) {
 
   const getTypeBadge = (type: string) => {
     const styles: Record<string, string> = {
-      checkin: 'bg-green-100 text-green-700',
-      checkout: 'bg-red-100 text-red-700',
-      towel: 'bg-blue-100 text-blue-700',
-      other: 'bg-gray-100 text-gray-600'
+      checkin: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400',
+      checkout: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400',
+      towel: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400',
+      other: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
     };
     const labels: Record<string, string> = {
       checkin: '↓ Check-in',
@@ -82,8 +80,8 @@ export function LogPage({ showToast }: LogPageProps) {
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Histórico de Movimentações</h1>
-          <p className="text-gray-500 text-sm mt-1">Total de registros: {logs.length}</p>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Histórico de Movimentações</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Total de registros: {logs.length}</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -101,19 +99,19 @@ export function LogPage({ showToast }: LogPageProps) {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-4 border-b flex gap-3 flex-wrap">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex gap-3 flex-wrap">
           <input
             type="text"
             placeholder="Filtrar por apartamento..."
             value={filterApt}
             onChange={(e) => setFilterApt(e.target.value)}
-            className="border rounded-lg px-3 py-2 w-40 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 w-40 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           />
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
             <option value="">Todos os tipos</option>
             <option value="checkin">Check-in</option>
@@ -124,21 +122,21 @@ export function LogPage({ showToast }: LogPageProps) {
         </div>
 
         {filteredLogs.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
             📭 Nenhum registro encontrado
           </div>
         ) : (
-          <div className="divide-y divide-gray-200 max-h-[600px] overflow-y-auto">
+          <div className="divide-y divide-gray-200 dark:divide-gray-700 max-h-[600px] overflow-y-auto">
             {filteredLogs.map(log => (
-              <div key={log.id} className="p-4 hover:bg-gray-50 flex items-start gap-3">
+              <div key={log.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-start gap-3">
                 <div className="min-w-[100px]">
-                  <div className="text-sm font-medium text-gray-700">{log.date}</div>
-                  <div className="text-xs text-gray-400">{log.time}</div>
+                  <div className="text-sm font-medium text-gray-700 dark:text-gray-300">{log.date}</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500">{log.time}</div>
                 </div>
                 <div className="min-w-[70px]">
-                  <span className="font-bold text-blue-600">Apto {log.apt}</span>
+                  <span className="font-bold text-blue-600 dark:text-blue-400">Apto {log.apt}</span>
                 </div>
-                <div className="flex-1 text-sm text-gray-700">{log.msg}</div>
+                <div className="flex-1 text-sm text-gray-700 dark:text-gray-300">{log.msg}</div>
                 <div>{getTypeBadge(log.type)}</div>
               </div>
             ))}

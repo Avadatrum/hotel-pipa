@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class', // Habilita dark mode via classe CSS
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -7,12 +8,7 @@ export default {
   theme: {
     extend: {
       screens: {
-        'xs': '480px',    // Breakpoint para celulares pequenos
-        'sm': '640px',
-        'md': '768px',
-        'lg': '1024px',
-        'xl': '1280px',
-        '2xl': '1536px',
+        'xs': '480px',
       },
     },
   },
