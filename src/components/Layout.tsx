@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useApartments } from '../hooks/useApartments';
 import { useTheme } from '../contexts/ThemeContext';
+import { Footer } from './Footer';
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -181,6 +182,7 @@ export function Layout() {
 
         <main className="p-4">
           <Outlet /> {/* Aqui as páginas serão renderizadas */}
+          <Footer />
         </main>
       </div>
     </div>
