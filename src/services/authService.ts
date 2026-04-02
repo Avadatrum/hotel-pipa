@@ -3,9 +3,9 @@ import { db } from './firebase';
 import { 
   collection, 
   doc, 
-  getDoc, 
+  // getDoc removido pois não é utilizado
   getDocs, 
-  addDoc, // Adicionado pois a nova função createUser utiliza addDoc
+  addDoc, 
   updateDoc, 
   deleteDoc, 
   query, 
@@ -67,8 +67,6 @@ export async function loginUser(email: string, password: string): Promise<any> {
     createdAt: userData.createdAt,
   };
 }
-
-// --- FUNÇÃO SUBSTITUÍDA ABAIXO ---
 
 // Criar usuário (apenas admin)
 export async function createUser(userData: any, password: string, createdBy: string): Promise<string> {

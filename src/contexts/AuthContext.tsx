@@ -1,5 +1,6 @@
 // src/contexts/AuthContext.tsx
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react'; // Importação de tipo corrigida
 import { loginUser, listUsers } from '../services/authService';
 import { setCurrentUser } from '../services/apartmentService'; 
 import type { User } from '../types';

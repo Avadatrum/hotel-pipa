@@ -5,16 +5,13 @@ import { useApartments } from '../hooks/useApartments';
 import { useTheme } from '../contexts/ThemeContext';
 import { Footer } from './Footer';
 import { UserMenu } from './UserMenu';
-import { useAuth } from '../contexts/AuthContext';
-import { usePermission } from '../hooks/usePermission';
+// import { useAuth } from '../contexts/AuthContext'; <- Removido (não utilizado)
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const { apartments } = useApartments();
   const { theme, toggleTheme } = useTheme();
-  const { user } = useAuth();
-  const { canManageUsers } = usePermission();
   const navigate = useNavigate();
   const location = useLocation();
 

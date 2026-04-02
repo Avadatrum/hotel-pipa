@@ -3,10 +3,12 @@ import { useState, useEffect } from 'react';
 import { db } from '../services/firebase';
 import { collection, onSnapshot, query, orderBy, limit, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { useToast } from '../hooks/useToast';
+import { useAuth } from '../contexts/AuthContext'; // Importação necessária
 import type { Receipt } from '../types';
 
 export function ReceiptsPage() {
   const { showToast } = useToast();
+  const { user } = useAuth(); // Obter o usuário logado
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [formData, setFormData] = useState({
     ref: '',
@@ -138,11 +140,14 @@ export function ReceiptsPage() {
       return;
     }
 
+    // CORREÇÃO AQUI: Adicionando userId e userName
     const newReceipt: Omit<Receipt, 'id'> = {
       ...formData,
       num: String(receipts.length + 1).padStart(4, '0'),
       createdAt: new Date().toLocaleDateString('pt-BR'),
-      ts: Date.now()
+      ts: Date.now(),
+      userId: user?.id || 'unknown', // Adicionado
+      userName: user?.name || 'Usuário Desconhecido', // Adicionado
     };
 
     await addDoc(collection(db, 'receipts'), newReceipt);
@@ -289,7 +294,7 @@ export function ReceiptsPage() {
                 value={formData.extra}
                 onChange={(e) => setFormData({ ...formData, extra: e.target.value })}
                 placeholder="Informações adicionais..."
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
             </div>
             
