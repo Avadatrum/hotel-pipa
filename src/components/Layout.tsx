@@ -4,12 +4,17 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useApartments } from '../hooks/useApartments';
 import { useTheme } from '../contexts/ThemeContext';
 import { Footer } from './Footer';
+import { UserMenu } from './UserMenu';
+import { useAuth } from '../contexts/AuthContext';
+import { usePermission } from '../hooks/usePermission';
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const { apartments } = useApartments();
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
+  const { canManageUsers } = usePermission();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -165,17 +170,17 @@ export function Layout() {
                 {currentPageLabel}
               </h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <span className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
                 {new Date().toLocaleDateString('pt-BR')}
               </span>
               <button 
                 onClick={toggleTheme}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
               >
                 {theme === 'dark' ? '☀️' : '🌙'}
               </button>
+              <UserMenu />
             </div>
           </div>
         </header>

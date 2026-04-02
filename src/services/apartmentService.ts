@@ -1,7 +1,17 @@
 // src/services/apartmentService.ts
-import { db } from './firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { db } from './firebase';
 import type { Apartment } from '../types';
+import { addWithAudit } from './auditService';
+
+// Variável global para armazenar o usuário atual (será setada no AuthContext)
+let currentUserId = '';
+let currentUserName = '';
+
+export function setCurrentUser(userId: string, userName: string) {
+  currentUserId = userId;
+  currentUserName = userName;
+}
 
 // Atualiza um apartamento no Firebase
 export async function updateApartment(aptNumber: number, data: Partial<Apartment>) {
@@ -15,9 +25,6 @@ export async function doCheckin(
   guestName: string, 
   pax: number
 ) {
-  // const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  // const dateStr = now.toLocaleDateString('pt-BR');
-  
   // Atualiza o apartamento
   await updateApartment(aptNumber, {
     occupied: true,
@@ -35,9 +42,6 @@ export async function doCheckin(
 
 // Função de Check-out
 export async function doCheckout(aptNumber: number, lostTowels: number) {
-  // const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  // const dateStr = now.toLocaleDateString('pt-BR');
-  
   // Busca o apartamento atual para saber quantas toalhas tinha
   const aptRef = doc(db, 'apartments', String(aptNumber));
   const aptSnap = await getDoc(aptRef);
@@ -84,19 +88,17 @@ export async function adjustItem(
   return newValue;
 }
 
-// Função para adicionar ao log
+// Função para adicionar log com auditoria
 async function addLog(apt: number, msg: string, type: 'checkin' | 'checkout' | 'towel' | 'other') {
   const now = new Date();
-  const { collection, addDoc } = await import('firebase/firestore');
-  
-  await addDoc(collection(db, 'log'), {
-    apt: apt,
-    msg: msg,
-    type: type,
+  await addWithAudit('log', {
+    apt,
+    msg,
+    type,
     time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     date: now.toLocaleDateString('pt-BR'),
-    ts: Date.now()
-  });
+    ts: Date.now(),
+  }, currentUserId, currentUserName);
 }
 
 // Função para adicionar perda

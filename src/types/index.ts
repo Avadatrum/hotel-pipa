@@ -1,3 +1,5 @@
+// src/types/index.ts
+
 // Tipo para um apartamento
 export interface Apartment {
   occupied: boolean;
@@ -8,7 +10,28 @@ export interface Apartment {
   guest: string;
 }
 
-// Tipo para histórico
+// Tipos para Autenticação
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'operator';
+  createdAt: string;
+  createdBy?: string;
+}
+
+export interface UserCredentials {
+  email: string;
+  password: string;
+}
+
+export interface AuthState {
+  user: User | null;
+  loading: boolean;
+  error: string | null;
+}
+
+// Tipo para histórico (Atualizado com auditoria)
 export interface LogEntry {
   id?: string;
   time: string;
@@ -17,9 +40,11 @@ export interface LogEntry {
   msg: string;
   type: 'checkin' | 'checkout' | 'towel' | 'other';
   ts: number;
+  userId: string;
+  userName: string;
 }
 
-// Tipo para perdas
+// Tipo para perdas (Atualizado com auditoria)
 export interface LossEntry {
   id?: string;
   apt: number;
@@ -28,9 +53,11 @@ export interface LossEntry {
   lost: number;
   date: string;
   ts: number;
+  userId: string;
+  userName: string;
 }
 
-// Tipo para recibos
+// Tipo para recibos (Atualizado com auditoria)
 export interface Receipt {
   id?: string;
   ref: string;
@@ -43,9 +70,11 @@ export interface Receipt {
   num: string;
   createdAt: string;
   ts: number;
+  userId: string;
+  userName: string;
 }
 
-// Tipo para documentos
+// Tipo para documentos (Atualizado com auditoria)
 export interface Document {
   id?: string;
   name: string;
@@ -56,4 +85,6 @@ export interface Document {
   data: string;
   createdAt: string;
   ts: number;
+  userId: string;
+  userName: string;
 }
