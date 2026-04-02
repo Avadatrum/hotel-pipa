@@ -40,6 +40,7 @@ export function Layout() {
   const navItems = [
     { id: 'apts', label: 'Apartamentos', icon: '🏨', path: '/' },
     { id: 'dashboard', label: 'Painel', icon: '📊', path: '/painel' },
+    { id: 'commissions', label: 'Comissões', icon: '💰', path: '/comissoes' }, // NOVO
     { id: 'losses', label: 'Perdas', icon: '⚠️', path: '/perdas' },
     { id: 'log', label: 'Histórico', icon: '📋', path: '/historico' },
     { id: 'recibos', label: 'Recibos', icon: '🧾', path: '/recibos' },

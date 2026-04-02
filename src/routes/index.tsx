@@ -11,6 +11,8 @@ import { LogPage } from '../pages/LogPage';
 import { ReceiptsPage } from '../pages/ReceiptsPage';
 import { DocumentsPage } from '../pages/DocumentsPage';
 import { AdminUsersPage } from '../pages/AdminUsersPage';
+// Adicione o import
+import { CommissionsPage } from '../pages/commissions/CommissionsPage';
 
 export const router = createBrowserRouter([
   {
@@ -27,6 +29,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <ApartmentsPage /> },
       { path: 'painel', element: <DashboardPage /> },
+      { path: 'comissoes', element: <CommissionsPage /> },
       { path: 'perdas', element: <LossesPage /> },
       { path: 'historico', element: <LogPage /> },
       { path: 'recibos', element: <ReceiptsPage /> },

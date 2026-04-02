@@ -1,0 +1,29 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "sales",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "dataVenda", "order": "DESCENDING" },
+        { "fieldPath": "vendedorId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sales",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "dataVenda", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sales",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "vendedorId", "order": "ASCENDING" },
+        { "fieldPath": "dataVenda", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

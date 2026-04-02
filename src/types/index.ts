@@ -88,3 +88,76 @@ export interface Document {
   userId: string;
   userName: string;
 }
+
+// ============ TIPOS PARA COMISSÕES ============
+
+export interface Tour {
+  id: string;
+  nome: string;
+  precoBase: number;
+  unidade: 'pessoa' | 'quadriciclo' | 'lancha' | 'cavalo' | 'carro' | 'buggy' | 'helicóptero';
+  tipo: string;
+  comissaoPadrao: number;
+  agenciaId: string | null;
+  ativo: boolean;
+  createdAt: any;
+  createdBy: string;
+}
+
+export interface Agency {
+  id: string;
+  nome: string;
+  contato: string;
+  telefone: string;
+  email: string;
+  taxaComissaoPersonalizada: number | null;
+  createdAt: any;
+  createdBy: string;
+}
+
+export interface Sale {
+  id: string;
+  dataVenda: any;
+  passeioId: string;
+  passeioNome: string;
+  quantidade: number;
+  precoUnitarioVendido: number;
+  valorTotal: number;
+  comissaoCalculada: number;
+  vendedorId: string;
+  vendedorNome: string;
+  clienteNome: string;
+  clienteTelefone: string;
+  observacoes: string;
+  status: 'confirmada' | 'cancelada';
+  createdAt: any;
+  canceledAt: any | null;
+  canceledBy: string | null;
+}
+
+export interface CustomCommission {
+  id: string;
+  passeioId: string | null;
+  agenciaId: string | null;
+  tipoComissao: 'percentual' | 'fixo';
+  valor: number;
+  dataInicio: any;
+  dataFim: any | null;
+  createdAt: any;
+  createdBy: string;
+}
+
+export interface CommissionAudit {
+  id: string;
+  passeioId?: string;
+  agenciaId?: string;
+  valorAntigo: number;
+  valorNovo: number;
+  alteradoPor: string;
+  alteradoPorNome: string;
+  dataAlteracao: any;
+}
+
+export interface AppSettings {
+  comissaoPadraoGlobal: number;
+}
