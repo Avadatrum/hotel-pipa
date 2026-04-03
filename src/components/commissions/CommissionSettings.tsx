@@ -17,9 +17,13 @@ export function CommissionSettings() {
   // Estado para controlar a edição do VALOR
   const [editingTour, setEditingTour] = useState<Tour | null>(null);
   
-  // NOVO Estado para controlar a edição do NOME
+  // Estado para controlar a edição do NOME
   const [editingNameTourId, setEditingNameTourId] = useState<string | null>(null);
   const [newNameInput, setNewNameInput] = useState<string>('');
+
+  // Estado para controlar a edição da Comissão Global
+  const [editingGlobal, setEditingGlobal] = useState(false);
+  const [globalInputValue, setGlobalInputValue] = useState(0);
 
   const [showCustomModal, setShowCustomModal] = useState(false);
   
@@ -48,6 +52,34 @@ export function CommissionSettings() {
     loadGlobalSettings();
   }, []);
 
+  // Função para atualizar a Comissão Global
+  const handleUpdateGlobalCommission = async () => {
+    if (globalInputValue < 0) {
+      showToast('O valor não pode ser negativo', 'warning');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const settingsRef = doc(db, 'appSettings', 'commissions');
+      // Atualiza ou cria o documento com o novo valor padrão
+      await updateDoc(settingsRef, {
+        valorPadrao: globalInputValue,
+        updatedBy: user?.id,
+        updatedByName: user?.name,
+        updatedAt: Timestamp.now()
+      });
+      
+      setGlobalCommission(globalInputValue);
+      showToast('Comissão padrão global atualizada!', 'success');
+      setEditingGlobal(false);
+    } catch (error) {
+      showToast('Erro ao atualizar configuração global', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Função para atualizar o NOME do passeio
   const handleUpdateTourName = async (tourId: string) => {
     if (!newNameInput.trim()) {
@@ -66,7 +98,7 @@ export function CommissionSettings() {
       });
       showToast('Nome do passeio atualizado com sucesso!', 'success');
       refreshData();
-      setEditingNameTourId(null); // Fecha o modo de edição
+      setEditingNameTourId(null);
       setNewNameInput('');
     } catch (error) {
       showToast('Erro ao atualizar nome', 'error');
@@ -154,6 +186,64 @@ export function CommissionSettings() {
 
   return (
     <div className="space-y-6">
+      {/* NOVA Seção: Configuração Global */}
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg shadow p-4">
+        <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2 flex items-center gap-2">
+          <span>⚙️</span> Comissão Padrão Global
+        </h3>
+        <p className="text-xs text-blue-600 dark:text-blue-300 mb-3">
+          Este valor será usado como base para novos passeios ou cálculos gerais.
+        </p>
+        <div className="flex items-center gap-4">
+          {editingGlobal ? (
+            <div className="flex items-center gap-2 w-full max-w-xs">
+              <div className="relative w-full">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={globalInputValue}
+                  onChange={(e) => setGlobalInputValue(parseFloat(e.target.value) || 0)}
+                  className="w-full pl-8 border border-blue-300 dark:border-blue-700 rounded px-2 py-1 dark:bg-blue-950"
+                  autoFocus
+                />
+              </div>
+              <button
+                onClick={handleUpdateGlobalCommission}
+                disabled={loading}
+                className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+              >
+                Salvar
+              </button>
+              <button
+                onClick={() => {
+                  setEditingGlobal(false);
+                  setGlobalInputValue(globalCommission);
+                }}
+                className="text-gray-600 dark:text-gray-300 px-2 py-1 text-sm hover:underline"
+              >
+                Cancelar
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between w-full max-w-xs">
+              <span className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                {formatMoney(globalCommission)}
+              </span>
+              <button
+                onClick={() => {
+                  setEditingGlobal(true);
+                  setGlobalInputValue(globalCommission);
+                }}
+                className="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline"
+              >
+                Editar
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
         <h3 className="font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
           <span>🎫</span> Comissão por Passeio
@@ -170,7 +260,7 @@ export function CommissionSettings() {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {tours.map(tour => (
                 <tr key={tour.id}>
-                  {/* COLUNA NOME - Agora editável */}
+                  {/* COLUNA NOME */}
                   <td className="px-3 py-2 text-sm">
                     {editingNameTourId === tour.id ? (
                       <div className="flex items-center gap-2">
@@ -205,7 +295,7 @@ export function CommissionSettings() {
                         <button
                           onClick={() => {
                             setEditingNameTourId(tour.id);
-                            setNewNameInput(tour.nome); // Prepara o input com o nome atual
+                            setNewNameInput(tour.nome);
                           }}
                           className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition-opacity ml-2"
                           title="Editar nome"
@@ -221,7 +311,7 @@ export function CommissionSettings() {
                     {formatMoney(tour.comissaoPadrao)}
                   </td>
                   
-                  {/* COLUNA AÇÕES (Para editar o valor da comissão) */}
+                  {/* COLUNA AÇÕES */}
                   <td className="px-3 py-2 text-center">
                     {editingTour?.id === tour.id ? (
                       <div className="flex items-center justify-center gap-2">

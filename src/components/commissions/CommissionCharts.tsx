@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useCommissions } from '../../contexts/CommissionContext';
 import { formatCurrency } from '../../utils/commissionCalculations';
-import type { Sale } from '../../types';
+// Importação de 'Sale' removida pois não é usada diretamente
 
 interface ChartData {
   name: string;
