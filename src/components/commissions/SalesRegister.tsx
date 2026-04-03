@@ -76,15 +76,22 @@ export function SalesRegister() {
 
         if (tourSnap.exists()) {
           const data = tourSnap.data();
+          
+          // CORREÇÃO AQUI: Adicionadas as propriedades faltantes exigidas pela interface Tour
           const freshTour: Tour = {
             id: tourSnap.id,
             nome: data.nome,
             precoBase: data.precoBase,
             comissaoPadrao: data.comissaoPadrao,
             unidade: data.unidade || 'un',
+            // Propriedades exigidas pelo TypeScript que estavam faltando
+            tipo: data.tipo, 
+            agenciaId: data.agenciaId,
+            ativo: data.ativo ?? true, // Assume true se não vier do banco
             createdAt: data.createdAt,
-            updatedAt: data.updatedAt
+            createdBy: data.createdBy
           };
+          
           setCurrentTourData(freshTour);
         } else {
           showToast('Passeio não encontrado no banco.', 'error');
