@@ -5,7 +5,8 @@ import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCommissions } from '../../contexts/CommissionContext';
 import { useToast } from '../../hooks/useToast';
-import { calculateCommission } from '../../utils/commissionCalculations';
+// Removido importação antiga de calculateCommission
+//import { formatCurrency } from '../../utils/commissionCalculations'; // Mantive formatCurrency se precisar
 import type { Tour } from '../../types';
 
 export function SalesRegister() {
@@ -25,6 +26,8 @@ export function SalesRegister() {
     if (selectedTour) {
       const total = selectedTour.precoBase * quantidade;
       setPrecoTotal(total);
+    } else {
+      setPrecoTotal(0);
     }
   }, [selectedTour, quantidade]);
 
@@ -44,12 +47,29 @@ export function SalesRegister() {
     setLoading(true);
     
     try {
-      const comissao = await calculateCommission(
-        selectedTour.id,
-        selectedTour.agenciaId,
-        precoTotal,
-        customCommissions
+      // --- INÍCIO DO CÁLCULO CORRIGIDO ---
+      
+      let valorComissaoUnitario = 0;
+      const agora = new Date();
+
+      // 1. Verificar se tem uma comissão personalizada (Promoção) ativa para este passeio
+      const promocaoAtiva = customCommissions.find(c => 
+        c.passeioId === selectedTour.id && 
+        (!c.dataFim || c.dataFim.toDate() > agora)
       );
+
+      if (promocaoAtiva) {
+        // Se tem promoção, usa o valor da promoção
+        valorComissaoUnitario = promocaoAtiva.valor;
+      } else {
+        // Se não tem, usa a comissão padrão configurada no Passeio (que você editou no settings)
+        valorComissaoUnitario = selectedTour.comissaoPadrao;
+      }
+
+      // Multiplica pela quantidade vendida
+      const comissaoTotal = valorComissaoUnitario * quantidade;
+
+      // --- FIM DO CÁLCULO ---
       
       const saleData = {
         dataVenda: Timestamp.now(),
@@ -58,7 +78,7 @@ export function SalesRegister() {
         quantidade,
         precoUnitarioVendido: selectedTour.precoBase,
         valorTotal: precoTotal,
-        comissaoCalculada: comissao,
+        comissaoCalculada: comissaoTotal, // <--- Salva o valor calculado acima
         vendedorId: user?.id,
         vendedorNome: user?.name || user?.email,
         clienteNome,
@@ -113,7 +133,7 @@ export function SalesRegister() {
             <option value="">Selecione um passeio</option>
             {tours.map(tour => (
               <option key={tour.id} value={tour.id}>
-                {tour.nome} - R$ {tour.precoBase} ({tour.unidade})
+                {tour.nome} - R$ {tour.precoBase.toFixed(2)} ({tour.unidade})
               </option>
             ))}
           </select>
@@ -140,9 +160,9 @@ export function SalesRegister() {
             </label>
             <input
               type="text"
-              value={`R$ ${precoTotal.toFixed(2)}`}
+              value={precoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               readOnly
-              className="w-full border rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-600"
+              className="w-full border rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-600 font-semibold"
             />
           </div>
         </div>
@@ -187,7 +207,7 @@ export function SalesRegister() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+          className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors font-bold"
         >
           {loading ? 'Registrando...' : '💰 Registrar Venda'}
         </button>

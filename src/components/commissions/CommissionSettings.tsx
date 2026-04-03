@@ -14,12 +14,16 @@ export function CommissionSettings() {
   
   const [globalCommission, setGlobalCommission] = useState(0);
   
-  // Estado para controlar a edição do VALOR
+  // Estado para controlar a edição da COMISSÃO (Valor)
   const [editingTour, setEditingTour] = useState<Tour | null>(null);
   
   // Estado para controlar a edição do NOME
   const [editingNameTourId, setEditingNameTourId] = useState<string | null>(null);
   const [newNameInput, setNewNameInput] = useState<string>('');
+
+  // NOVO Estado para controlar a edição do PREÇO BASE
+  const [editingPriceTourId, setEditingPriceTourId] = useState<string | null>(null);
+  const [newPriceInput, setNewPriceInput] = useState<number>(0);
 
   // Estado para controlar a edição da Comissão Global
   const [editingGlobal, setEditingGlobal] = useState(false);
@@ -62,7 +66,6 @@ export function CommissionSettings() {
     setLoading(true);
     try {
       const settingsRef = doc(db, 'appSettings', 'commissions');
-      // Atualiza ou cria o documento com o novo valor padrão
       await updateDoc(settingsRef, {
         valorPadrao: globalInputValue,
         updatedBy: user?.id,
@@ -102,6 +105,32 @@ export function CommissionSettings() {
       setNewNameInput('');
     } catch (error) {
       showToast('Erro ao atualizar nome', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // NOVA Função para atualizar o PREÇO BASE
+  const handleUpdateTourPrice = async (tourId: string) => {
+    if (newPriceInput < 0) {
+      showToast('O preço não pode ser negativo', 'warning');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const tourRef = doc(db, 'tours', tourId);
+      await updateDoc(tourRef, {
+        precoBase: newPriceInput,
+        updatedBy: user?.id,
+        updatedByName: user?.name,
+        updatedAt: Timestamp.now()
+      });
+      showToast('Preço base atualizado com sucesso!', 'success');
+      refreshData();
+      setEditingPriceTourId(null);
+    } catch (error) {
+      showToast('Erro ao atualizar preço', 'error');
     } finally {
       setLoading(false);
     }
@@ -186,7 +215,7 @@ export function CommissionSettings() {
 
   return (
     <div className="space-y-6">
-      {/* NOVA Seção: Configuração Global */}
+      {/* Seção: Configuração Global */}
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg shadow p-4">
         <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2 flex items-center gap-2">
           <span>⚙️</span> Comissão Padrão Global
@@ -246,13 +275,15 @@ export function CommissionSettings() {
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
         <h3 className="font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-          <span>🎫</span> Comissão por Passeio
+          <span>🎫</span> Configurações dos Passeios
         </h3>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th className="px-3 py-2 text-left text-sm">Passeio</th>
+                {/* NOVA COLUNA: Preço Base */}
+                <th className="px-3 py-2 text-center text-sm">Preço Base (R$)</th>
                 <th className="px-3 py-2 text-center text-sm">Comissão Atual (R$)</th>
                 <th className="px-3 py-2 text-center text-sm">Ações</th>
               </tr>
@@ -306,6 +337,50 @@ export function CommissionSettings() {
                     )}
                   </td>
                   
+                  {/* NOVA COLUNA: PREÇO BASE */}
+                  <td className="px-3 py-2 text-sm text-center font-medium text-gray-700 dark:text-gray-300">
+                    {editingPriceTourId === tour.id ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">R$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            defaultValue={tour.precoBase}
+                            onChange={(e) => setNewPriceInput(parseFloat(e.target.value) || 0)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleUpdateTourPrice(tour.id);
+                            }}
+                            className="w-24 pl-6 border rounded px-2 py-1 text-sm dark:bg-gray-700 dark:border-gray-600"
+                            min="0"
+                            autoFocus
+                          />
+                        </div>
+                        <button
+                          onClick={() => handleUpdateTourPrice(tour.id)}
+                          className="text-green-600 hover:text-green-800 text-xs"
+                        >
+                          ✓
+                        </button>
+                        <button
+                          onClick={() => setEditingPriceTourId(null)}
+                          className="text-red-500 hover:text-red-700 text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center group cursor-pointer" onClick={() => {
+                          setEditingPriceTourId(tour.id);
+                          setNewPriceInput(tour.precoBase);
+                        }}>
+                        <span className="group-hover:text-blue-600 transition-colors">
+                          {formatMoney(tour.precoBase)}
+                        </span>
+                      </div>
+                    )}
+                  </td>
+                  
                   {/* COLUNA COMISSÃO */}
                   <td className="px-3 py-2 text-sm text-center font-bold text-green-600">
                     {formatMoney(tour.comissaoPadrao)}
@@ -340,7 +415,7 @@ export function CommissionSettings() {
                         onClick={() => setEditingTour(tour)}
                         className="text-blue-600 hover:text-blue-800 text-sm"
                       >
-                        Editar Valor
+                        Editar Comissão
                       </button>
                     )}
                    </td>
