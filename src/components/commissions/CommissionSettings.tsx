@@ -1,7 +1,7 @@
 // src/components/commissions/CommissionSettings.tsx
 import { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
-import { collection, doc, getDocs, updateDoc, addDoc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, updateDoc, addDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import { useCommissions } from '../../contexts/CommissionContext';
@@ -11,31 +11,73 @@ export function CommissionSettings() {
   const { user } = useAuth();
   const { tours, customCommissions, refreshData } = useCommissions();
   const { showToast } = useToast();
-  const [globalCommission, setGlobalCommission] = useState(10);
+  
+  const [globalCommission, setGlobalCommission] = useState(0);
+  
+  // Estado para controlar a edição do VALOR
   const [editingTour, setEditingTour] = useState<Tour | null>(null);
+  
+  // NOVO Estado para controlar a edição do NOME
+  const [editingNameTourId, setEditingNameTourId] = useState<string | null>(null);
+  const [newNameInput, setNewNameInput] = useState<string>('');
+
   const [showCustomModal, setShowCustomModal] = useState(false);
+  
   const [customForm, setCustomForm] = useState({
     passeioId: '',
-    tipoComissao: 'percentual' as 'percentual' | 'fixo',
-    valor: 10,
+    valor: 0,
     dataInicio: new Date().toISOString().split('T')[0],
     dataFim: ''
   });
+  
   const [loading, setLoading] = useState(false);
 
-  // Carregar configuração global
   useEffect(() => {
     const loadGlobalSettings = async () => {
-      const settingsRef = doc(db, 'appSettings', 'commissions');
-      const settingsSnap = await getDocs(collection(db, 'appSettings'));
-      // Implementar busca da configuração global
+      try {
+        const docRef = doc(db, 'appSettings', 'commissions');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setGlobalCommission(data.valorPadrao || 0);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar configurações globais:", error);
+      }
     };
     loadGlobalSettings();
   }, []);
 
-  const handleUpdateTourCommission = async (tour: Tour, newCommission: number) => {
-    if (newCommission < 0 || newCommission > 100) {
-      showToast('Comissão deve ser entre 0 e 100', 'warning');
+  // Função para atualizar o NOME do passeio
+  const handleUpdateTourName = async (tourId: string) => {
+    if (!newNameInput.trim()) {
+      showToast('O nome não pode ficar vazio', 'warning');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const tourRef = doc(db, 'tours', tourId);
+      await updateDoc(tourRef, {
+        nome: newNameInput,
+        updatedBy: user?.id,
+        updatedByName: user?.name,
+        updatedAt: Timestamp.now()
+      });
+      showToast('Nome do passeio atualizado com sucesso!', 'success');
+      refreshData();
+      setEditingNameTourId(null); // Fecha o modo de edição
+      setNewNameInput('');
+    } catch (error) {
+      showToast('Erro ao atualizar nome', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateTourCommission = async (tour: Tour, newValue: number) => {
+    if (newValue < 0) {
+      showToast('O valor não pode ser negativo', 'warning');
       return;
     }
     
@@ -43,12 +85,12 @@ export function CommissionSettings() {
     try {
       const tourRef = doc(db, 'tours', tour.id);
       await updateDoc(tourRef, {
-        comissaoPadrao: newCommission,
+        comissaoPadrao: newValue,
         updatedBy: user?.id,
         updatedByName: user?.name,
         updatedAt: Timestamp.now()
       });
-      showToast(`Comissão do passeio ${tour.nome} atualizada para ${newCommission}%`, 'success');
+      showToast(`Comissão do passeio ${tour.nome} atualizada para R$ ${newValue.toFixed(2)}`, 'success');
       refreshData();
       setEditingTour(null);
     } catch (error) {
@@ -74,8 +116,7 @@ export function CommissionSettings() {
       await addDoc(collection(db, 'customCommissions'), {
         passeioId: customForm.passeioId,
         agenciaId: null,
-        tipoComissao: customForm.tipoComissao,
-        valor: customForm.valor,
+        valor: customForm.valor, 
         dataInicio: Timestamp.fromDate(new Date(customForm.dataInicio)),
         dataFim: customForm.dataFim ? Timestamp.fromDate(new Date(customForm.dataFim)) : null,
         createdAt: Timestamp.now(),
@@ -84,7 +125,7 @@ export function CommissionSettings() {
       showToast('Comissão personalizada criada com sucesso!', 'success');
       refreshData();
       setShowCustomModal(false);
-      setCustomForm({ passeioId: '', tipoComissao: 'percentual', valor: 10, dataInicio: new Date().toISOString().split('T')[0], dataFim: '' });
+      setCustomForm({ passeioId: '', valor: 0, dataInicio: new Date().toISOString().split('T')[0], dataFim: '' });
     } catch (error) {
       showToast('Erro ao criar comissão personalizada', 'error');
     } finally {
@@ -109,9 +150,10 @@ export function CommissionSettings() {
 
   const activeCustomCommissions = customCommissions.filter(c => !c.dataFim || new Date(c.dataFim.toDate()) > new Date());
 
+  const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
   return (
     <div className="space-y-6">
-      {/* Configuração de Comissão por Passeio */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
         <h3 className="font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
           <span>🎫</span> Comissão por Passeio
@@ -121,31 +163,79 @@ export function CommissionSettings() {
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th className="px-3 py-2 text-left text-sm">Passeio</th>
-                <th className="px-3 py-2 text-center text-sm">Comissão Atual</th>
+                <th className="px-3 py-2 text-center text-sm">Comissão Atual (R$)</th>
                 <th className="px-3 py-2 text-center text-sm">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {tours.map(tour => (
                 <tr key={tour.id}>
-                  <td className="px-3 py-2 text-sm">{tour.nome}</td>
-                  <td className="px-3 py-2 text-sm text-center font-bold text-green-600">
-                    {tour.comissaoPadrao}%
+                  {/* COLUNA NOME - Agora editável */}
+                  <td className="px-3 py-2 text-sm">
+                    {editingNameTourId === tour.id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          defaultValue={tour.nome}
+                          onChange={(e) => setNewNameInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleUpdateTourName(tour.id);
+                          }}
+                          className="w-full border rounded px-2 py-1 text-sm dark:bg-gray-700 dark:border-gray-600"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleUpdateTourName(tour.id)}
+                          className="text-green-600 hover:text-green-800 text-xs font-bold"
+                          title="Salvar nome"
+                        >
+                          ✓
+                        </button>
+                        <button
+                          onClick={() => setEditingNameTourId(null)}
+                          className="text-red-500 hover:text-red-700 text-xs font-bold"
+                          title="Cancelar"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between group">
+                        <span>{tour.nome}</span>
+                        <button
+                          onClick={() => {
+                            setEditingNameTourId(tour.id);
+                            setNewNameInput(tour.nome); // Prepara o input com o nome atual
+                          }}
+                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition-opacity ml-2"
+                          title="Editar nome"
+                        >
+                          ✏️
+                        </button>
+                      </div>
+                    )}
                   </td>
+                  
+                  {/* COLUNA COMISSÃO */}
+                  <td className="px-3 py-2 text-sm text-center font-bold text-green-600">
+                    {formatMoney(tour.comissaoPadrao)}
+                  </td>
+                  
+                  {/* COLUNA AÇÕES (Para editar o valor da comissão) */}
                   <td className="px-3 py-2 text-center">
                     {editingTour?.id === tour.id ? (
                       <div className="flex items-center justify-center gap-2">
                         <input
                           type="number"
+                          step="0.01"
                           defaultValue={tour.comissaoPadrao}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
-                              handleUpdateTourCommission(tour, parseInt((e.target as HTMLInputElement).value));
+                              handleUpdateTourCommission(tour, parseFloat((e.target as HTMLInputElement).value));
                             }
                           }}
-                          className="w-16 border rounded px-2 py-1 text-sm dark:bg-gray-700 dark:border-gray-600"
+                          className="w-24 border rounded px-2 py-1 text-sm dark:bg-gray-700 dark:border-gray-600"
                           min="0"
-                          max="100"
                           autoFocus
                         />
                         <button
@@ -160,7 +250,7 @@ export function CommissionSettings() {
                         onClick={() => setEditingTour(tour)}
                         className="text-blue-600 hover:text-blue-800 text-sm"
                       >
-                        ✏️ Editar
+                        Editar Valor
                       </button>
                     )}
                    </td>
@@ -175,7 +265,7 @@ export function CommissionSettings() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-            <span>⏰</span> Comissões Personalizadas (Temporárias)
+            <span>⏰</span> Promoções de Comissão
           </h3>
           <button
             onClick={() => setShowCustomModal(true)}
@@ -196,9 +286,7 @@ export function CommissionSettings() {
                   <div>
                     <p className="text-sm font-medium">{tour?.nome || commission.passeioId}</p>
                     <p className="text-xs text-gray-500">
-                      {commission.tipoComissao === 'percentual' 
-                        ? `${commission.valor}% de comissão` 
-                        : `R$ ${commission.valor} fixo`}
+                      {formatMoney(commission.valor)}
                       {commission.dataFim && ` • até ${commission.dataFim.toDate().toLocaleDateString('pt-BR')}`}
                     </p>
                   </div>
@@ -237,26 +325,13 @@ export function CommissionSettings() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-1">Tipo</label>
-                <select
-                  value={customForm.tipoComissao}
-                  onChange={(e) => setCustomForm({ ...customForm, tipoComissao: e.target.value as 'percentual' | 'fixo' })}
-                  className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600"
-                >
-                  <option value="percentual">Percentual (%)</option>
-                  <option value="fixo">Valor Fixo (R$)</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  {customForm.tipoComissao === 'percentual' ? 'Percentual (%)' : 'Valor (R$)'}
-                </label>
+                <label className="block text-sm font-medium mb-1">Valor da Comissão (R$)</label>
                 <input
                   type="number"
                   step="0.01"
+                  placeholder="0.00"
                   value={customForm.valor}
-                  onChange={(e) => setCustomForm({ ...customForm, valor: parseFloat(e.target.value) })}
+                  onChange={(e) => setCustomForm({ ...customForm, valor: parseFloat(e.target.value) || 0 })}
                   className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600"
                 />
               </div>
