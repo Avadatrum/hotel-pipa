@@ -5,9 +5,11 @@ import { SalesRegister } from '../../components/commissions/SalesRegister';
 import { CommissionDashboard } from '../../components/commissions/CommissionDashboard';
 import { AgencyManager } from '../../components/commissions/AgencyManager';
 import { MyCommissions } from '../../components/commissions/MyCommissions';
+import { CommissionCharts } from '../../components/commissions/CommissionCharts';
+import { CommissionSettings } from '../../components/commissions/CommissionSettings';
 import { CommissionProvider } from '../../contexts/CommissionContext';
 
-type TabType = 'register' | 'dashboard' | 'agencies' | 'myCommissions';
+type TabType = 'register' | 'dashboard' | 'charts' | 'agencies' | 'settings' | 'myCommissions';
 
 export function CommissionsPage() {
   const { canManageUsers } = usePermission();
@@ -16,11 +18,13 @@ export function CommissionsPage() {
   const tabs = [
     { id: 'register', label: '📝 Registrar Venda', icon: '💰' },
     { id: 'dashboard', label: '📊 Dashboard', icon: '📈' },
+    { id: 'charts', label: '📉 Gráficos', icon: '📊' },
     { id: 'myCommissions', label: '👤 Minhas Comissões', icon: '👤' },
   ];
   
   if (canManageUsers) {
     tabs.push({ id: 'agencies', label: '🏢 Agências', icon: '🏢' });
+    tabs.push({ id: 'settings', label: '⚙️ Configurar Comissões', icon: '⚙️' });
   }
 
   return (
@@ -47,7 +51,9 @@ export function CommissionsPage() {
         
         {activeTab === 'register' && <SalesRegister />}
         {activeTab === 'dashboard' && <CommissionDashboard />}
+        {activeTab === 'charts' && <CommissionCharts />}
         {activeTab === 'agencies' && canManageUsers && <AgencyManager />}
+        {activeTab === 'settings' && canManageUsers && <CommissionSettings />}
         {activeTab === 'myCommissions' && <MyCommissions />}
       </div>
     </CommissionProvider>

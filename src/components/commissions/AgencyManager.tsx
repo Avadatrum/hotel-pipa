@@ -16,7 +16,6 @@ export function AgencyManager() {
   const [editingAgency, setEditingAgency] = useState<Agency | null>(null);
   const [formData, setFormData] = useState({
     nome: '',
-    contato: '',
     telefone: '',
     email: '',
     taxaComissaoPersonalizada: ''
@@ -36,7 +35,6 @@ export function AgencyManager() {
     try {
       const agencyData = {
         nome: formData.nome,
-        contato: formData.contato,
         telefone: formData.telefone,
         email: formData.email,
         taxaComissaoPersonalizada: formData.taxaComissaoPersonalizada ? parseFloat(formData.taxaComissaoPersonalizada) : null,
@@ -76,7 +74,7 @@ export function AgencyManager() {
   };
 
   const resetForm = () => {
-    setFormData({ nome: '', contato: '', telefone: '', email: '', taxaComissaoPersonalizada: '' });
+    setFormData({ nome: '', telefone: '', email: '', taxaComissaoPersonalizada: '' });
     setEditingAgency(null);
   };
 
@@ -84,7 +82,6 @@ export function AgencyManager() {
     setEditingAgency(agency);
     setFormData({
       nome: agency.nome,
-      contato: agency.contato || '',
       telefone: agency.telefone || '',
       email: agency.email || '',
       taxaComissaoPersonalizada: agency.taxaComissaoPersonalizada?.toString() || ''
@@ -116,7 +113,6 @@ export function AgencyManager() {
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th className="px-4 py-3 text-left text-sm">Nome</th>
-                <th className="px-4 py-3 text-left text-sm">Contato</th>
                 <th className="px-4 py-3 text-left text-sm">Telefone</th>
                 <th className="px-4 py-3 text-left text-sm">Comissão Personalizada</th>
                 <th className="px-4 py-3 text-center text-sm">Ações</th>
@@ -126,7 +122,6 @@ export function AgencyManager() {
               {agencies.map(agency => (
                 <tr key={agency.id}>
                   <td className="px-4 py-3 text-sm font-medium">{agency.nome}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{agency.contato || '-'}</td>
                   <td className="px-4 py-3 text-sm">{agency.telefone || '-'}</td>
                   <td className="px-4 py-3 text-sm">
                     {agency.taxaComissaoPersonalizada 
@@ -171,16 +166,6 @@ export function AgencyManager() {
                   onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2"
                   required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-1">Contato</label>
-                <input
-                  type="text"
-                  value={formData.contato}
-                  onChange={(e) => setFormData({ ...formData, contato: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
                 />
               </div>
               
