@@ -5,7 +5,13 @@ admin.initializeApp();
 
 const db = admin.firestore();
 
-// Calcular comissão quando uma venda é criada
+// =================================================================
+// ATENÇÃO: Função de cálculo desativada.
+// O cálculo de comissão agora é feito pelo Frontend (SalesRegister.tsx).
+// Se ativar isso novamente, ela vai sobrescrever o valor calculado pelo app.
+// =================================================================
+
+/*
 exports.calculateCommission = functions.firestore
   .document('sales/{saleId}')
   .onCreate(async (snap, context) => {
@@ -55,6 +61,7 @@ exports.calculateCommission = functions.firestore
     const commission = (sale.valorTotal * commissionRate) / 100;
     await snap.ref.update({ comissaoCalculada: commission });
   });
+*/
 
 // Registrar auditoria quando comissão é alterada
 exports.commissionAudit = functions.firestore
