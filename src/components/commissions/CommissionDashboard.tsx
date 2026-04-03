@@ -1,13 +1,12 @@
 // src/components/commissions/CommissionDashboard.tsx
 import { useState } from 'react';
 import { useCommissions } from '../../contexts/CommissionContext';
-import { useAuth } from '../../contexts/AuthContext';
+// import { useAuth } from '../../contexts/AuthContext'; <--- Removido pois não é usado
 import { formatCurrency, formatDate } from '../../utils/commissionCalculations';
-import type { Sale } from '../../types';
 
 export function CommissionDashboard() {
-  const { sales, tours, loading, totalCommissions } = useCommissions();
-  const { user } = useAuth();
+  const { sales, loading, totalCommissions } = useCommissions();
+  
   const [filterVendedor, setFilterVendedor] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });

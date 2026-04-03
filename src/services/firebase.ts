@@ -1,8 +1,8 @@
 // src/services/firebase.ts
 import { initializeApp } from 'firebase/app';
-import { getFirestore, enableIndexedDbPersistence, connectFirestoreEmulator } from 'firebase/firestore';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
+import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore'; // Removidos conectores de emulador não usados
+import { getAuth } from 'firebase/auth'; // Removido connectAuthEmulator
+import { getFunctions } from 'firebase/functions'; // Removido connectFunctionsEmulator
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBHxPaxpzS-3BE165zcTSP-XDkMi0tG4GM",

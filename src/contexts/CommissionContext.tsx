@@ -1,7 +1,8 @@
 // src/contexts/CommissionContext.tsx
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
+import type { ReactNode } from 'react'; // Importação de tipo separada
 import { db } from '../services/firebase';
-import { collection, onSnapshot, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore'; // Timestamp removido
 import { useAuth } from './AuthContext';
 import type { Sale, Tour, Agency, CustomCommission } from '../types';
 
