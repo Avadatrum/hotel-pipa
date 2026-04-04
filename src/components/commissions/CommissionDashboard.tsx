@@ -6,6 +6,7 @@ import { useCommissions } from '../../contexts/CommissionContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import { formatCurrency, formatDate } from '../../utils/commissionCalculations';
+import { SalesRegister } from './SalesRegister';
 
 // ─── Modal de Confirmação ────────────────────────────────────────────────────
 interface ConfirmModalProps {
@@ -65,6 +66,10 @@ export function CommissionDashboard() {
   const [deletingAll, setDeletingAll] = useState(false);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  
+  // Estado para controlar o Modal de Edição
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingSale, setEditingSale] = useState<any>(null);
 
   // Ordenação da tabela
   const [sortField, setSortField] = useState<string>('dataVenda');
@@ -214,15 +219,29 @@ export function CommissionDashboard() {
     }
   };
 
+  // Função para abrir o modal de edição
+  const openEditModal = (sale: any) => {
+    setEditingSale(sale);
+    setShowEditModal(true);
+  };
+
+  // Callback para fechar o modal e atualizar
+  const handleEditSuccess = () => {
+    setShowEditModal(false);
+    setEditingSale(null);
+    refreshData();
+  };
+
   // ── Export CSV ─────────────────────────────────────────────────────────────
   const handleExportCSV = () => {
-    const headers = ['Data Venda', 'Data Passeio', 'Cliente', 'Telefone', 'Passeio', 'Qtd', 'Valor Total', 'Comissão', 'Vendedor', 'Status'];
+    const headers = ['Data Venda', 'Data Passeio', 'Cliente', 'Telefone', 'Passeio', 'Agência', 'Qtd', 'Valor Total', 'Comissão', 'Vendedor', 'Status'];
     const rows = filteredSales.map(s => [
       formatDate(safeDate(s.dataVenda)),
       s.dataPasseioRealizacao ? formatDate(safeDate(s.dataPasseioRealizacao)) : '',
       s.clienteNome || '',
       (s as any).clienteTelefone || '',
       s.passeioNome || '',
+      (s as any).agenciaNome || '',
       String(s.quantidade || 1),
       s.valorTotal.toFixed(2),
       s.comissaoCalculada.toFixed(2),
@@ -250,6 +269,7 @@ export function CommissionDashboard() {
     else { setSortField(field); setSortDir('asc'); }
     setPage(1);
   };
+  
   const SortIcon = ({ field }: { field: string }) => {
     if (sortField !== field) return <span className="text-gray-300 text-xs ml-0.5">↕</span>;
     return <span className="text-blue-500 text-xs ml-0.5">{sortDir === 'asc' ? '↑' : '↓'}</span>;
@@ -273,6 +293,23 @@ export function CommissionDashboard() {
   // ── Render ──────────────────────────────────────────────────────────────
   return (
     <>
+      {/* Modal de Edição */}
+      {showEditModal && editingSale && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowEditModal(false)} />
+          <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <SalesRegister 
+                editingSale={editingSale} 
+                onCancelEdit={() => setShowEditModal(false)} 
+                onSaveSuccess={handleEditSuccess} 
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Exclusão em Massa */}
       <ConfirmModal
         open={showDeleteAllModal}
         title="Excluir todas as vendas filtradas?"
@@ -463,6 +500,7 @@ export function CommissionDashboard() {
                   <th className="px-3 py-2.5 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 select-none hidden md:table-cell" onClick={() => handleSort('passeioNome')}>
                     Passeio <SortIcon field="passeioNome" />
                   </th>
+                  <th className="px-3 py-2.5 text-left hidden md:table-cell">Agência</th>
                   <th className="px-3 py-2.5 text-right hidden md:table-cell">Qtd</th>
                   <th className="px-3 py-2.5 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 select-none hidden sm:table-cell" onClick={() => handleSort('valorTotal')}>
                     Valor <SortIcon field="valorTotal" />
@@ -475,12 +513,12 @@ export function CommissionDashboard() {
                   </th>
                   <th className="px-3 py-2.5 text-center">Status</th>
                   {user?.role === 'admin' && <th className="px-3 py-2.5 text-center">Ações</th>}
-                </tr>
+                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {paginatedSales.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-16 text-center text-gray-400">
+                    <td colSpan={12} className="py-16 text-center text-gray-400">
                       <div className="text-4xl mb-2">🔍</div>
                       <p className="text-sm">Nenhuma venda encontrada com os filtros atuais.</p>
                       {(hasGlobalFilters || hasTableFilters) && (
@@ -509,6 +547,15 @@ export function CommissionDashboard() {
                       <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300 truncate max-w-[130px] hidden md:table-cell" title={sale.passeioNome}>
                         {sale.passeioNome}
                       </td>
+                      <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300 hidden md:table-cell">
+                        {(sale as any).agenciaNome ? (
+                          <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium">
+                            🏢 {(sale as any).agenciaNome}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 text-xs">—</span>
+                        )}
+                      </td>
                       <td className="px-3 py-2.5 text-sm text-right text-gray-500 dark:text-gray-400 hidden md:table-cell">{sale.quantidade || 1}</td>
                       <td className="px-3 py-2.5 text-sm text-right text-gray-600 dark:text-gray-300 whitespace-nowrap hidden sm:table-cell">
                         {formatCurrency(sale.valorTotal)}
@@ -531,6 +578,13 @@ export function CommissionDashboard() {
                       {user?.role === 'admin' && (
                         <td className="px-3 py-2.5 text-center">
                           <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => openEditModal(sale)}
+                              className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-1.5 rounded transition-all text-xs"
+                              title="Editar venda"
+                            >
+                              ✏️
+                            </button>
                             {sale.status === 'confirmada' && (
                               <button
                                 onClick={() => handleCancelSale(sale.id, sale.clienteNome)}
