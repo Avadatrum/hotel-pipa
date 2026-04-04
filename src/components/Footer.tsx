@@ -27,7 +27,7 @@ export function Footer() {
             }
           `}
         >
-          Avadatrum
+          Wemerson Marinho - Avadatrum - Versão 1.0
         </a>
         {' '}© {currentYear}
       </p>
