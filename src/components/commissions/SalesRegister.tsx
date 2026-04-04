@@ -9,7 +9,6 @@ import type { Tour } from '../../types';
 
 export function SalesRegister() {
   const { user } = useAuth();
-  // Usamos customCommissions do contexto para verificar promoções
   const { customCommissions, refreshData } = useCommissions(); 
   const { showToast } = useToast();
   
@@ -18,13 +17,18 @@ export function SalesRegister() {
   const [loadingList, setLoadingList] = useState(false);
   
   const [selectedTourId, setSelectedTourId] = useState<string>('');
-  // Dados completos do passeio selecionado (buscados frescos do banco)
   const [currentTourData, setCurrentTourData] = useState<Tour | null>(null);
   
   const [quantidade, setQuantidade] = useState(1);
   const [clienteNome, setClienteNome] = useState('');
   const [clienteTelefone, setClienteTelefone] = useState('');
   const [observacoes, setObservacoes] = useState('');
+  
+  // --- NOVOS ESTADOS: Data e Hora do Passeio ---
+  // Definimos a data padrão como 'hoje'
+  const [dataPasseio, setDataPasseio] = useState(new Date().toISOString().split('T')[0]);
+  const [horaPasseio, setHoraPasseio] = useState('09:00'); // Horário padrão
+  
   const [loading, setLoading] = useState(false);
   const [loadingTour, setLoadingTour] = useState(false);
   const [precoTotal, setPrecoTotal] = useState(0);
@@ -51,7 +55,6 @@ export function SalesRegister() {
     loadTours();
   }, [showToast]);
 
-  // Recalcula o preço total sempre que o passeio ou quantidade muda
   useEffect(() => {
     if (currentTourData) {
       setPrecoTotal(currentTourData.precoBase * quantidade);
@@ -60,15 +63,14 @@ export function SalesRegister() {
     }
   }, [currentTourData, quantidade]);
 
-  // Busca dados atualizados do passeio selecionado
   const handleTourChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value;
     setSelectedTourId(id);
     
     if (id) {
       setLoadingTour(true);
-      setCurrentTourData(null); // Limpa dados anteriores imediatamente
-      setQuantidade(1); // Reseta quantidade
+      setCurrentTourData(null); 
+      setQuantidade(1);
       
       try {
         const tourRef = doc(db, 'tours', id);
@@ -76,22 +78,18 @@ export function SalesRegister() {
 
         if (tourSnap.exists()) {
           const data = tourSnap.data();
-          
-          // CORREÇÃO AQUI: Adicionadas as propriedades faltantes exigidas pela interface Tour
           const freshTour: Tour = {
             id: tourSnap.id,
             nome: data.nome,
             precoBase: data.precoBase,
             comissaoPadrao: data.comissaoPadrao,
             unidade: data.unidade || 'un',
-            // Propriedades exigidas pelo TypeScript que estavam faltando
             tipo: data.tipo, 
             agenciaId: data.agenciaId,
-            ativo: data.ativo ?? true, // Assume true se não vier do banco
+            ativo: data.ativo ?? true,
             createdAt: data.createdAt,
             createdBy: data.createdBy
           };
-          
           setCurrentTourData(freshTour);
         } else {
           showToast('Passeio não encontrado no banco.', 'error');
@@ -120,6 +118,12 @@ export function SalesRegister() {
       showToast('Digite o nome do cliente', 'warning');
       return;
     }
+
+    // Validação simples da data
+    if (!dataPasseio) {
+      showToast('Informe a data do passeio', 'warning');
+      return;
+    }
     
     setLoading(true);
     
@@ -127,7 +131,6 @@ export function SalesRegister() {
       let valorComissaoUnitario = 0;
       const agora = new Date();
 
-      // Verifica se há uma promoção (comissão personalizada) ativa
       const promocaoAtiva = customCommissions.find(c => 
         c.passeioId === currentTourData.id && 
         (!c.dataFim || c.dataFim.toDate() > agora)
@@ -136,14 +139,18 @@ export function SalesRegister() {
       if (promocaoAtiva) {
         valorComissaoUnitario = promocaoAtiva.valor;
       } else {
-        // Se não tem promoção, usa a comissão padrão do passeio
         valorComissaoUnitario = currentTourData.comissaoPadrao;
       }
 
       const comissaoTotal = valorComissaoUnitario * quantidade;
       
+      // Formata a data e hora para salvar no banco (Ex: "03/04/2026 14:00")
+      // Isso facilita muito a leitura direta no Console do Firebase
+      const dataHoraPasseioFormatada = `${dataPasseio} ${horaPasseio}`;
+      
       const saleData = {
-        dataVenda: Timestamp.now(),
+        dataVenda: Timestamp.now(), // Data que a venda foi feita (hoje)
+        dataPasseioRealizacao: dataHoraPasseioFormatada, // <--- NOVO CAMPO
         passeioId: currentTourData.id,
         passeioNome: currentTourData.nome,
         quantidade,
@@ -173,8 +180,8 @@ export function SalesRegister() {
       setClienteTelefone('');
       setObservacoes('');
       setPrecoTotal(0);
+      // Não limpa a data/hora, pois pode ser para o mesmo dia/turma
       
-      // Atualiza os dados globais (Dashboard, etc)
       refreshData();
     } catch (error) {
       console.error('Erro ao registrar venda:', error);
@@ -219,7 +226,6 @@ export function SalesRegister() {
             )}
           </div>
           
-          {/* Resumo do Passeio Selecionado */}
           {currentTourData && (
             <div className="mt-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-100 dark:border-green-800 text-sm space-y-1">
               <div className="flex justify-between items-center">
@@ -245,6 +251,36 @@ export function SalesRegister() {
             </div>
           )}
         </div>
+
+        {/* --- NOVA SEÇÃO: Data e Hora do Passeio --- */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+              Data do Passeio *
+            </label>
+            <input
+              type="date"
+              value={dataPasseio}
+              onChange={(e) => setDataPasseio(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+              Horário *
+            </label>
+            <input
+              type="time"
+              value={horaPasseio}
+              onChange={(e) => setHoraPasseio(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+              required
+            />
+          </div>
+        </div>
+        {/* -------------------------------------------- */}
         
         <div className="grid grid-cols-2 gap-4">
           <div>

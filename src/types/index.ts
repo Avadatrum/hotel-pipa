@@ -1,3 +1,4 @@
+import { Timestamp } from 'firebase/firestore';
 // src/types/index.ts
 
 // Tipo para um apartamento
@@ -117,7 +118,8 @@ export interface Agency {
 
 export interface Sale {
   id: string;
-  dataVenda: any;
+  dataVenda: Timestamp;
+  dataPasseioRealizacao: string; // NOVO CAMPO - formato "YYYY-MM-DD HH:MM"
   passeioId: string;
   passeioNome: string;
   quantidade: number;
@@ -127,12 +129,12 @@ export interface Sale {
   vendedorId: string;
   vendedorNome: string;
   clienteNome: string;
-  clienteTelefone: string;
-  observacoes: string;
+  clienteTelefone?: string;
+  observacoes?: string;
   status: 'confirmada' | 'cancelada';
-  createdAt: any;
-  canceledAt: any | null;
-  canceledBy: string | null;
+  createdAt: Timestamp;
+  canceledAt?: Timestamp | null;
+  canceledBy?: string | null;
 }
 
 export interface CustomCommission {
