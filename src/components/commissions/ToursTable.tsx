@@ -12,7 +12,7 @@ interface ToursTableProps {
   onToggleActive: (tour: Tour) => Promise<void>;
 }
 
-export function ToursTable({ tours, loading, onUpdateName, onUpdatePrice, onUpdateCommission, onToggleActive }: ToursTableProps) {
+export function ToursTable({ tours, onUpdateName, onUpdatePrice, onUpdateCommission, onToggleActive }: ToursTableProps) {
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [editingCommissionId, setEditingCommissionId] = useState<string | null>(null);

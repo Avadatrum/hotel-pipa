@@ -1,8 +1,6 @@
 // src/components/commissions/GlobalCommissionCard.tsx
 import { useState } from 'react';
 import { fmt } from '../../utils/formatHelpers';
-import type { Tour } from '../../types/commission.types';
-
 
 interface GlobalCommissionCardProps {
   globalCommission: number;

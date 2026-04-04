@@ -9,7 +9,7 @@ export async function calculateCommission(
   valorTotal: number,
   customCommissions: CustomCommission[]
 ): Promise<number> {
-  // 1. Verificar comissão personalizada ativa
+  // 1. Verificar comissão personalizada ativa (apenas comissão fixa, sem percentual)
   const activeCustom = customCommissions.find(cc => {
     const isForTour = cc.passeioId === tourId;
     const isForAgency = !cc.passeioId && cc.agenciaId === agenciaId;
@@ -18,30 +18,28 @@ export async function calculateCommission(
   });
 
   if (activeCustom) {
-    if (activeCustom.tipoComissao === 'percentual') {
-      return (valorTotal * activeCustom.valor) / 100;
-    } else {
-      return activeCustom.valor;
-    }
+    // Comissão personalizada é sempre um valor fixo (R$)
+    return activeCustom.valor;
   }
 
-  // 2. Verificar comissão da agência
+  // 2. Verificar comissão da agência (taxa percentual)
   if (agenciaId) {
     const agencyRef = doc(db, 'agencies', agenciaId);
     const agencySnap = await getDoc(agencyRef);
-    const agencyData = agencySnap.data() as Agency;
+    const agencyData = agencySnap.data() as Agency | undefined;
     
-    if (agencyData?.taxaComissaoPersonalizada !== null) {
+    // Verificar se agencyData existe e tem taxaComissaoPersonalizada
+    if (agencyData?.taxaComissaoPersonalizada !== undefined && agencyData.taxaComissaoPersonalizada !== null) {
       return (valorTotal * agencyData.taxaComissaoPersonalizada) / 100;
     }
   }
 
-  // 3. Usar comissão padrão do passeio
+  // 3. Usar comissão padrão do passeio (percentual)
   const tourRef = doc(db, 'tours', tourId);
   const tourSnap = await getDoc(tourRef);
-  const tourData = tourSnap.data() as Tour;
+  const tourData = tourSnap.data() as Tour | undefined;
   
-  if (tourData?.comissaoPadrao) {
+  if (tourData?.comissaoPadrao !== undefined && tourData.comissaoPadrao !== null) {
     return (valorTotal * tourData.comissaoPadrao) / 100;
   }
 

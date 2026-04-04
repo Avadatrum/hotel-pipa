@@ -1,4 +1,3 @@
-import { Timestamp } from 'firebase/firestore';
 // src/types/index.ts
 
 // Tipo para um apartamento
