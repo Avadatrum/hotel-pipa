@@ -14,7 +14,7 @@ export function Footer() {
       }
     `}>
       <p>
-        Desenvolvido por{' '}
+        HPanel Desenvolvido com carinho por{' '}
         <a
           href="https://github.com/Avadatrum"
           target="_blank"
@@ -27,9 +27,9 @@ export function Footer() {
             }
           `}
         >
-          Wemerson Marinho - Avadatrum - Versão 1.0
+          Wemerson Marinho - Avadatrum
         </a>
-        {' '}© {currentYear}
+        {' '}Versão 1.0.0 © {currentYear}
       </p>
     </footer>
   );
