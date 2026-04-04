@@ -61,18 +61,27 @@ export interface LossEntry {
 // Tipo para recibos (Atualizado com auditoria)
 export interface Receipt {
   id?: string;
+
+  // Campos do formulário
   ref: string;
   name: string;
   cpf: string;
   value: string;
   date: string;
-  period?: string;
-  extra?: string;
+  period: string;
+  extra: string;
+
+  // Metadados de criação
   num: string;
   createdAt: string;
   ts: number;
   userId: string;
   userName: string;
+
+  // Metadados de edição (novos — opcionais)
+  updatedAt?: string;
+  updatedTs?: number;
+  updatedBy?: string;
 }
 
 // Tipo para documentos (Atualizado com auditoria)
