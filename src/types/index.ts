@@ -99,65 +99,66 @@ export interface Document {
   userName: string;
 }
 
-// ============ TIPOS PARA COMISSÕES ============
+// ============ TIPOS PARA COMISSÕES (ATUALIZADOS) ============
 
 export interface Tour {
   id: string;
   nome: string;
   precoBase: number;
-  unidade: 'pessoa' | 'quadriciclo' | 'lancha' | 'cavalo' | 'carro' | 'buggy' | 'helicóptero';
-  tipo: string;
   comissaoPadrao: number;
-  agenciaId: string | null;
+  unidade: string;
+  tipo?: string;
+  agenciaId?: string | null;
   ativo: boolean;
-  createdAt: any;
-  createdBy: string;
+  createdAt?: any;
+  createdBy?: string;
+  updatedBy?: string;
+  updatedAt?: any;
 }
 
 export interface Agency {
   id: string;
   nome: string;
-  contato: string;
-  telefone: string;
-  email: string;
-  taxaComissaoPersonalizada: number | null;
-  createdAt: any;
-  createdBy: string;
-}
-
-export interface Sale {
-  id: string;
-  dataVenda: Timestamp;
-  dataPasseioRealizacao: string; // NOVO CAMPO - formato "YYYY-MM-DD HH:MM"
-  passeioId: string;
-  passeioNome: string;
-  quantidade: number;
-  precoUnitarioVendido: number;
-  valorTotal: number;
-  comissaoCalculada: number;
-  vendedorId: string;
-  vendedorNome: string;
-  clienteNome: string;
-  clienteTelefone?: string;
-  observacoes?: string;
-  status: 'confirmada' | 'cancelada';
-  createdAt: Timestamp;
-  canceledAt?: Timestamp | null;
-  canceledBy?: string | null;
+  telefone?: string;
+  email?: string;
+  taxaComissaoPersonalizada?: number | null;
+  createdAt?: any;
+  createdBy?: string;
+  updatedAt?: any;
 }
 
 export interface CustomCommission {
   id: string;
-  passeioId: string | null;
-  agenciaId: string | null;
-  tipoComissao: 'percentual' | 'fixo';
+  passeioId: string;
+  agenciaId?: string | null;
   valor: number;
   dataInicio: any;
   dataFim: any | null;
-  createdAt: any;
-  createdBy: string;
+  createdAt?: any;
+  createdBy?: string;
 }
 
+// Se você usa outros tipos, exporte também
+export interface Sale {
+  id: string;
+  clienteNome: string;
+  clienteTelefone?: string;
+  passeioId: string;
+  passeioNome: string;
+  vendedorId: string;
+  vendedorNome: string;
+  dataVenda: any;
+  dataPasseioRealizacao?: any;
+  valorTotal: number;
+  comissaoCalculada: number;
+  status: 'confirmada' | 'cancelada';
+  quantidade: number;
+  agenciaId?: string;
+  agenciaNome?: string;
+  observacoes?: string;
+}
+
+// Mantido caso ainda seja utilizado em algum lugar do projeto
 export interface CommissionAudit {
   id: string;
   passeioId?: string;

@@ -17,11 +17,11 @@ import { CommissionsPage } from '../pages/commissions/CommissionsPage';
 import { RegisterSalePage } from '../pages/commissions/RegisterSalePage';
 
 // Importe as outras páginas de comissão que você tem (Dashboard, Gráficos, etc)
-import { CommissionDashboard } from '../components/commissions/CommissionDashboard';
-import { CommissionCharts } from '../components/commissions/CommissionCharts';
+import { CommissionDashboard } from "../pages/commissions/CommissionDashboard";
 import { MyCommissions } from '../components/commissions/MyCommissions';
 import { AgencyManager } from '../components/commissions/AgencyManager';
-import { CommissionSettings } from '../components/commissions/CommissionSettings';
+import { CommissionSettings } from "../pages/commissions/CommissionSettings"; // ← caminho corrigido
+import { CommissionCharts } from "../components/commissions/CommissionCharts";
 
 export const router = createBrowserRouter([
   {
