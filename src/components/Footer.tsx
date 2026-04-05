@@ -22,7 +22,7 @@ export function Footer() {
               H<span className="text-blue-500">Panel</span>
             </span>
             <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest bg-blue-500/10 text-blue-500 rounded-full">
-              v1.0.0
+              v1.0.1
             </span>
           </div>
           <p className="text-xs tracking-wide">
