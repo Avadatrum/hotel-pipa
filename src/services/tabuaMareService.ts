@@ -1,23 +1,15 @@
 // src/services/tabuaMareService.ts
 //
-// O frontend NÃO chama a API de marés diretamente (bloqueio de CORS).
-// Todas as chamadas passam pelo proxy hospedado nas Firebase Functions.
-//
-// Para usar localmente com o emulador, defina no .env.local:
-//   VITE_TABUA_MARE_PROXY_URL=http://localhost:5001/<projeto>/us-central1/tabuaMareProxy
-//
-// Em produção a variável não precisa ser definida — a URL é detectada automaticamente.
+// Todas as chamadas passam por /tabua-mare-api/v2/...
+// que é redirecionado para https://tabuamare.devtu.qzz.io/api pelo proxy:
+//   - Em desenvolvimento: proxy do Vite (vite.config.ts)
+//   - Em produção no Vercel: proxy do vercel.json
+// Isso evita bloqueio de CORS sem precisar de Firebase Functions.
 
-const PROJECT_ID =
-  import.meta.env.VITE_FIREBASE_PROJECT_ID ?? 'toalhashotel';
+const BASE = '/tabua-mare-api/v2';
 
-const PROXY_URL =
-  import.meta.env.VITE_TABUA_MARE_PROXY_URL ??
-  `https://us-central1-${PROJECT_ID}.cloudfunctions.net/tabuaMareProxy`;
-
-async function fetchProxy<T>(path: string): Promise<T> {
-  const url = `${PROXY_URL}?path=${encodeURIComponent(path)}`;
-  const response = await fetch(url, {
+async function fetchTabua<T>(path: string): Promise<T> {
+  const response = await fetch(`${BASE}/${path}`, {
     headers: { Accept: 'application/json' },
   });
 
@@ -33,66 +25,40 @@ async function fetchProxy<T>(path: string): Promise<T> {
 
 /** Lista todos os estados costeiros disponíveis */
 export async function listarEstados() {
-  return fetchProxy('states');
+  return fetchTabua('states');
 }
 
 /** Lista os portos de um estado (ex: 'rn', 'pb', 'ce') */
 export async function listarPortosPorEstado(estado: string) {
-  return fetchProxy(`harbor_names/${estado.toLowerCase()}`);
+  return fetchTabua(`harbor_names/${estado.toLowerCase()}`);
 }
 
-/** Retorna detalhes de um ou mais portos por ID (ex: ['rn01']) */
+/** Retorna detalhes de um ou mais portos por ID */
 export async function buscarPortoPorId(ids: string[]) {
-  return fetchProxy(`harbors/[${ids.join(',')}]`);
+  return fetchTabua(`harbors/[${ids.join(',')}]`);
 }
 
 /**
- * Retorna a tábua de maré de um porto para um determinado mês e dias.
+ * Retorna a tábua de maré de um porto.
  * @param portoId  ID do porto (ex: 'rn01')
  * @param mes      Mês 1-12
- * @param dias     String de dias (ex: '1,2,3' ou '1-30')
+ * @param dias     Dias (ex: '5' ou '1,2,3' ou '1-30')
  */
-export async function buscarTabuaMare(
-  portoId: string,
-  mes: number,
-  dias: string
-) {
-  return fetchProxy(`tabua-mare/${portoId}/${mes}/[${dias}]`);
+export async function buscarTabuaMare(portoId: string, mes: number, dias: string) {
+  return fetchTabua(`tabua-mare/${portoId}/${mes}/[${dias}]`);
 }
 
-/**
- * Retorna o porto mais próximo dentro de um estado a partir de coordenadas.
- * @param estado  Sigla do estado (ex: 'rn')
- * @param lat     Latitude
- * @param lng     Longitude
- */
-export async function buscarPortoMaisProximoNoEstado(
-  estado: string,
-  lat: number,
-  lng: number
-) {
-  return fetchProxy(
-    `nearested-harbor/${estado.toLowerCase()}/[${lat},${lng}]`
-  );
+/** Porto mais próximo dentro de um estado */
+export async function buscarPortoMaisProximoNoEstado(estado: string, lat: number, lng: number) {
+  return fetchTabua(`nearested-harbor/${estado.toLowerCase()}/[${lat},${lng}]`);
 }
 
-/**
- * Retorna o porto mais próximo das coordenadas, sem filtrar por estado.
- * @param lat  Latitude
- * @param lng  Longitude
- */
+/** Porto mais próximo sem filtrar por estado */
 export async function buscarPortoMaisProximo(lat: number, lng: number) {
-  return fetchProxy(`nearest-harbor-independent-state/[${lat},${lng}]`);
+  return fetchTabua(`nearest-harbor-independent-state/[${lat},${lng}]`);
 }
 
-/**
- * Retorna a tábua de maré pelo porto mais próximo das coordenadas informadas.
- * @param lat     Latitude
- * @param lng     Longitude
- * @param estado  Sigla do estado (ex: 'rn')
- * @param mes     Mês 1-12
- * @param dias    String de dias (ex: '1,2,3' ou '1-30')
- */
+/** Tábua de maré por geolocalização */
 export async function buscarTabuaPorGeolocalizacao(
   lat: number,
   lng: number,
@@ -100,7 +66,7 @@ export async function buscarTabuaPorGeolocalizacao(
   mes: number,
   dias: string
 ) {
-  return fetchProxy(
+  return fetchTabua(
     `geo-tabua-mare/[${lat},${lng}]/${estado.toLowerCase()}/${mes}/[${dias}]`
   );
 }

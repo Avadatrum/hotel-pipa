@@ -1,35 +1,29 @@
 // src/hooks/useTabuaMare.ts
 
 import { useState, useEffect, useCallback } from 'react';
-import { buscarTabuaPorGeolocalizacao, buscarPortoMaisProximo } from '../services/tabuaMareService';
+import { buscarTabuaMare, listarPortosPorEstado } from '../services/tabuaMareService';
 import type { TabuaMareState } from '../types/tabuaMare.types';
 
 interface UseTabuaMareOptions {
-  /** Sigla do estado (ex: 'rn'). Se não informado, busca sem filtrar estado. */
   estado?: string;
-  /** Mês desejado (1-12). Padrão: mês atual. */
+  portoIdFixo?: string;
   mes?: number;
-  /** Dias desejados no formato '1-31'. Padrão: todos os dias do mês. */
   dias?: string;
 }
 
 interface UseTabuaMareReturn extends TabuaMareState {
   portoId: string | null;
+  portoNome: string | null;
   refetch: () => void;
 }
 
-/**
- * Hook que detecta a geolocalização do usuário automaticamente
- * e busca a tábua de marés do porto mais próximo.
- *
- * @example
- * const { data, loading, error } = useTabuaMare({ estado: 'rn' });
- */
 export function useTabuaMare(options: UseTabuaMareOptions = {}): UseTabuaMareReturn {
+  const hoje = new Date();
   const {
     estado = 'rn',
-    mes = new Date().getMonth() + 1,
-    dias = `1-${new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()}`,
+    portoIdFixo,
+    mes = hoje.getMonth() + 1,
+    dias = String(hoje.getDate()),
   } = options;
 
   const [state, setState] = useState<TabuaMareState>({
@@ -37,86 +31,66 @@ export function useTabuaMare(options: UseTabuaMareOptions = {}): UseTabuaMareRet
     loading: false,
     error: null,
   });
-  const [portoId, setPortoId] = useState<string | null>(null);
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [portoId, setPortoId] = useState<string | null>(portoIdFixo ?? null);
+  const [portoNome, setPortoNome] = useState<string | null>(null);
   const [fetchTick, setFetchTick] = useState(0);
 
-  // Detecta geolocalização uma vez ao montar
+  // Passo 1: buscar lista de portos e pegar o primeiro
+  // Resposta real da API: { data: [{ id, harbor_name, year, ... }], total }
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setState(prev => ({
-        ...prev,
-        error: 'Geolocalização não suportada pelo navegador.',
-      }));
+    if (portoIdFixo) {
+      setPortoId(portoIdFixo);
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setCoords({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-      },
-      () => {
+    listarPortosPorEstado(estado)
+      .then((resposta: any) => {
+        // A API retorna { data: [...], total: N }
+        const lista: any[] = resposta?.data ?? [];
+
+        if (lista.length === 0) {
+          setState(prev => ({
+            ...prev,
+            error: `Nenhum porto encontrado para ${estado.toUpperCase()}.`,
+          }));
+          return;
+        }
+
+        const primeiro = lista[0];
+        setPortoId(primeiro.id);
+        setPortoNome(primeiro.harbor_name ?? primeiro.id);
+      })
+      .catch((err: any) => {
         setState(prev => ({
           ...prev,
-          error: 'Não foi possível obter a localização. Verifique as permissões do navegador.',
+          error: err?.message ?? 'Erro ao buscar portos.',
         }));
-      }
-    );
-  }, []);
+      });
+  }, [estado, portoIdFixo]);
 
+  // Passo 2: buscar tábua quando tiver portoId
   const fetchData = useCallback(async () => {
-    if (!coords) return;
+    if (!portoId) return;
 
     setState({ data: null, loading: true, error: null });
 
     try {
-      let resultado: any;
-
-      if (estado) {
-        resultado = await buscarTabuaPorGeolocalizacao(
-          coords.lat,
-          coords.lng,
-          estado,
-          mes,
-          dias
-        );
-      } else {
-        // Se não passou estado, busca o porto independente e depois a tábua
-        const porto: any = await buscarPortoMaisProximo(coords.lat, coords.lng);
-        const portoIdEncontrado: string = porto?.id ?? porto?.data?.id;
-        if (!portoIdEncontrado) throw new Error('Porto mais próximo não encontrado.');
-        setPortoId(portoIdEncontrado);
-        resultado = porto;
-      }
-
-      // Extrai o portoId da resposta se disponível
-      const idDoPorto =
-        resultado?.porto?.id ??
-        resultado?.data?.porto?.id ??
-        resultado?.id ??
-        null;
-      if (idDoPorto) setPortoId(idDoPorto);
-
-      setState({ data: resultado?.data ?? resultado, loading: false, error: null });
+      const resultado: any = await buscarTabuaMare(portoId, mes, dias);
+      setState({ data: resultado, loading: false, error: null });
     } catch (err: any) {
       setState({
         data: null,
         loading: false,
-        error: err?.message ?? 'Erro ao buscar dados de maré.',
+        error: err?.message ?? 'Erro ao buscar tábua de marés.',
       });
     }
-  }, [coords, estado, mes, dias, fetchTick]);
+  }, [portoId, mes, dias, fetchTick]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const refetch = useCallback(() => {
-    setFetchTick(t => t + 1);
-  }, []);
+  const refetch = useCallback(() => setFetchTick(t => t + 1), []);
 
-  return { ...state, portoId, refetch };
+  return { ...state, portoId, portoNome, refetch };
 }

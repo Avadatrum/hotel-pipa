@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/tabua-mare-api/(.*)",
+      "destination": "https://tabuamare.devtu.qzz.io/api/$1"
+    }
+  ]
+}
