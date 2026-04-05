@@ -6,6 +6,9 @@ import { db } from '../services/firebase';
 import { collection, onSnapshot, query, orderBy, limit, doc, setDoc } from 'firebase/firestore';
 import type { LossEntry, LogEntry } from '../types';
 
+// ✅ Importe o novo componente
+import { LossesPanel } from '../components/LossesPanel';
+
 export function DashboardPage() {
   const { apartments } = useApartments();
   const { showToast } = useToast();
@@ -29,7 +32,7 @@ export function DashboardPage() {
     return () => unsubscribe();
   }, []);
 
-  // Carrega as perdas
+  // Carrega as perdas (mantido para o card de estatísticas)
   useEffect(() => {
     const unsubscribe = onSnapshot(
       query(collection(db, 'losses'), orderBy('ts', 'desc'), limit(50)),
@@ -90,6 +93,7 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Cabeçalho da Dashboard */}
       <div>
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Painel de Controle</h1>
         <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Visão geral do hotel em tempo real</p>
@@ -150,6 +154,7 @@ export function DashboardPage() {
         </div>
       </div>
 
+      {/* Controle de Estoque */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
         <h2 className="font-semibold text-gray-800 dark:text-white mb-3">📦 Controle de Estoque</h2>
         <div className="flex items-center gap-3 flex-wrap">
@@ -174,8 +179,10 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Resumo do dia - em mobile fica em coluna */}
+      {/* Grid com Resumo e NOVO Painel de Perdas Integrado */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        
+        {/* Coluna 1: Resumo de Hoje */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
           <h2 className="font-semibold text-gray-800 dark:text-white mb-3">📅 Resumo de Hoje</h2>
           <div className="grid grid-cols-3 gap-3">
@@ -194,27 +201,14 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <h2 className="font-semibold text-gray-800 dark:text-white mb-3">⚠️ Últimas Perdas</h2>
-          {losses.slice(0, 5).length === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-4">✅ Nenhuma perda registrada</p>
-          ) : (
-            <div className="space-y-2">
-              {losses.slice(0, 5).map(loss => (
-                <div key={loss.id} className="flex justify-between items-center text-sm border-b border-gray-100 dark:border-gray-700 pb-2">
-                  <div>
-                    <span className="font-medium text-gray-800 dark:text-gray-200">Apto {loss.apt}</span>
-                    {loss.guest && <span className="text-gray-500 dark:text-gray-400 ml-1">- {loss.guest}</span>}
-                  </div>
-                  <div className="text-red-600 font-bold">-{loss.lost} toalha(s)</div>
-                  <div className="text-xs text-gray-400 dark:text-gray-500">{loss.date}</div>
-                </div>
-              ))}
-            </div>
-          )}
+        {/* Coluna 2: O NOVO COMPONENTE DE PERDAS */}
+        <div className="flex flex-col">
+          <LossesPanel limit={5} showExport={false} /> 
         </div>
+        
       </div>
 
+      {/* Atividade Recente */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
         <h2 className="font-semibold text-gray-800 dark:text-white mb-3">📋 Atividade Recente</h2>
         {todayLogs.slice(0, 10).length === 0 ? (

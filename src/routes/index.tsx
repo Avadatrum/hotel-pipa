@@ -6,7 +6,6 @@ import { AdminRoute } from '../components/AdminRoute';
 import { LoginPage } from '../pages/LoginPage';
 import { ApartmentsPage } from '../pages/ApartmentsPage';
 import { DashboardPage } from '../pages/DashboardPage'; // Cuidado: nome conflitante com comissão
-import { LossesPage } from '../pages/LossesPage';
 import { LogPage } from '../pages/LogPage';
 import { ReceiptsPage } from '../pages/ReceiptsPage';
 import { DocumentsPage } from '../pages/DocumentsPage';
@@ -41,7 +40,6 @@ export const router = createBrowserRouter([
       // Mantenha o Dashboard geral separado se for diferente do de comissões
       { path: 'painel', element: <DashboardPage /> }, 
       
-      { path: 'perdas', element: <LossesPage /> },
       { path: 'historico', element: <LogPage /> },
       { path: 'recibos', element: <ReceiptsPage /> },
       { path: 'documentos', element: <DocumentsPage /> },

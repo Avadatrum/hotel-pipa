@@ -1,6 +1,5 @@
 // src/components/commissions/PromotionsList.tsx
 import type { CustomCommission, Tour } from '../../types/commission.types';
-
 import { fmt } from '../../utils/formatHelpers';
 
 interface PromotionsListProps {
