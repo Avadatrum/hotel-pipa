@@ -8,6 +8,8 @@ import type { LossEntry, LogEntry } from '../types';
 
 // ✅ Importe o novo componente
 import { LossesPanel } from '../components/LossesPanel';
+// ✅ Importar o Widget de Tábua de Maré
+import { TabuaMareWidget } from '../components/TabuaMare/TabuaMareWidget';
 
 export function DashboardPage() {
   const { apartments } = useApartments();
@@ -152,6 +154,16 @@ export function DashboardPage() {
             <div className="text-3xl">⚠️</div>
           </div>
         </div>
+
+        {/* NOVO: Widget de Tábua de Maré */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-cyan-500 lg:col-span-1 sm:col-span-2">
+          <div className="flex items-center justify-between mb-2">
+             <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400">Previsão da Maré</h3>
+             <span className="text-2xl">🌊</span>
+          </div>
+          <TabuaMareWidget estado="rn" />
+        </div>
+
       </div>
 
       {/* Controle de Estoque */}

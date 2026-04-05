@@ -1,7 +1,6 @@
 // src/components/commissions/PromotionFormModal.tsx
 import { useState } from 'react';
 import type { Tour } from '../../types/commission.types';
-
 import { fmt } from '../../utils/formatHelpers';
 
 interface PromotionFormModalProps {
