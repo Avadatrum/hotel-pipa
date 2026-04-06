@@ -3,20 +3,22 @@
 interface HoraMare { hour: string; level: number; }
 interface DiaData { day: number; weekday_name: string; hours: HoraMare[]; }
 
+export type Language = 'pt' | 'es' | 'en';
+
 function fmtHour(h: string): string {
   return h.slice(0, 5);
 }
 
-function isAlta(level: number, mean: number): boolean {
-  return level >= mean;
-}
-
-function getTideIcon(level: number, mean: number): string {
-  return isAlta(level, mean) ? '🌕' : '🌑';
-}
-
-function getTideType(level: number, mean: number): string {
-  return isAlta(level, mean) ? 'Alta' : 'Baixa';
+function getTideType(level: number, mean: number, lang: Language): string {
+  const isHigh = level >= mean;
+  
+  const translations = {
+    pt: { high: 'Alta', low: 'Baixa' },
+    es: { high: 'Alta', low: 'Baja' },
+    en: { high: 'High', low: 'Low' }
+  };
+  
+  return isHigh ? translations[lang].high : translations[lang].low;
 }
 
 export interface TideMessageOptions {
@@ -28,7 +30,7 @@ export interface TideMessageOptions {
   portoNome: string;
   portoId: string;
   meanLevel: number;
-  distanciaKm?: number; // Mantido como opcional para compatibilidade
+  language: Language;
 }
 
 export function formatTideMessage(options: TideMessageOptions): string {
@@ -41,41 +43,72 @@ export function formatTideMessage(options: TideMessageOptions): string {
     portoNome,
     portoId,
     meanLevel,
-    distanciaKm = 46
+    language
   } = options;
 
   const dataStr = `${diaData.day}/${mes}/${ano}`;
   const weekday = diaData.weekday_name.charAt(0).toUpperCase() + diaData.weekday_name.slice(1);
   
+  // Traduções
+  const translations = {
+    pt: {
+      title: 'Tábua de Maré - Hotel da Pipa',
+      greeting: `Olá ${guestName} do apartamento ${aptNumber}!`,
+      forecast: `Previsão de marés para *${weekday}, ${dataStr}* no ${portoNome}:`,
+      reference: `Referência: ${portoNome} (${portoId.toUpperCase()})`,
+      meanLevel: `Nível médio: ${meanLevel.toFixed(2)}m`,
+      enjoy: 'Aproveite o dia na praia!',
+      footer: 'Dados oficiais da Marinha do Brasil'
+    },
+    es: {
+      title: 'Tabla de Mareas - Hotel da Pipa',
+      greeting: `¡Hola ${guestName} del apartamento ${aptNumber}!`,
+      forecast: `Previsión de mareas para *${weekday}, ${dataStr}* en ${portoNome}:`,
+      reference: `Referencia: ${portoNome} (${portoId.toUpperCase()})`,
+      meanLevel: `Nivel medio: ${meanLevel.toFixed(2)}m`,
+      enjoy: '¡Disfruta el día en la playa!',
+      footer: 'Datos oficiales de la Marina de Brasil'
+    },
+    en: {
+      title: 'Tide Table - Hotel da Pipa',
+      greeting: `Hello ${guestName} from apartment ${aptNumber}!`,
+      forecast: `Tide forecast for *${weekday}, ${dataStr}* at ${portoNome}:`,
+      reference: `Reference: ${portoNome} (${portoId.toUpperCase()})`,
+      meanLevel: `Mean level: ${meanLevel.toFixed(2)}m`,
+      enjoy: 'Enjoy your day at the beach!',
+      footer: 'Official data from the Brazilian Navy'
+    }
+  };
+  
+  const t = translations[language];
+  
   // Linhas da mensagem
   const lines: string[] = [
-    `🌊 *Tábua de Maré - Hotel da Pipa*`,
+    t.title,
     ``,
-    `Olá ${guestName} do apartamento ${aptNumber}!`,
+    t.greeting,
     ``,
-    `Previsão de marés para *${weekday}, ${dataStr}* no ${portoNome}:`,
+    t.forecast,
     ``,
   ];
   
   // Adiciona cada horário de maré
   diaData.hours.forEach((mare) => {
-    const icon = getTideIcon(mare.level, meanLevel);
-    const tipo = getTideType(mare.level, meanLevel);
+    const tipo = getTideType(mare.level, meanLevel, language);
     const hora = fmtHour(mare.hour);
     const altura = mare.level.toFixed(2);
-    lines.push(`${icon} *${tipo}*: ${hora} - ${altura}m`);
+    lines.push(`${tipo}: ${hora} - ${altura}m`);
   });
   
-  // Adiciona rodapé com informações (incluindo a distância)
+  // Adiciona rodapé com informações
   lines.push(
     ``,
-    `📍 *Referência:* ${portoNome} (${portoId.toUpperCase()})`,
-    `📏 *Distância da Pipa:* ~${distanciaKm} km`,
-    `📊 *Nível médio:* ${meanLevel.toFixed(2)}m`,
+    t.reference,
+    t.meanLevel,
     ``,
-    `🏖️ *Aproveite o dia na praia!*`,
+    t.enjoy,
     ``,
-    `_Dados oficiais da Marinha do Brasil_`
+    t.footer
   );
   
   return lines.join('\n');
@@ -91,18 +124,35 @@ export function formatTideMessageShort(options: TideMessageOptions): string {
     ano,
     portoNome,
     meanLevel,
-    distanciaKm = 46
+    language
   } = options;
 
   const dataStr = `${diaData.day}/${mes}/${ano}`;
   
   const tides = diaData.hours.map((mare) => {
-    const icon = getTideIcon(mare.level, meanLevel);
-    const tipo = getTideType(mare.level, meanLevel);
+    const tipo = getTideType(mare.level, meanLevel, language);
     const hora = fmtHour(mare.hour);
     const altura = mare.level.toFixed(1);
-    return `${icon} ${tipo} ${hora} (${altura}m)`;
+    return `${tipo} ${hora} (${altura}m)`;
   }).join(' | ');
   
-  return `🌊 *Marés ${dataStr}* - ${portoNome} (${distanciaKm}km da Pipa)\n\nOlá ${guestName} (Apto ${aptNumber})!\n\n${tides}\n\n🏖️ Bom dia de praia!`;
+  const translations = {
+    pt: { prefix: `Marés ${dataStr} - ${portoNome}` },
+    es: { prefix: `Mareas ${dataStr} - ${portoNome}` },
+    en: { prefix: `Tides ${dataStr} - ${portoNome}` }
+  };
+  
+  const greetings = {
+    pt: `Olá ${guestName} (Apto ${aptNumber})!`,
+    es: `¡Hola ${guestName} (Apto ${aptNumber})!`,
+    en: `Hello ${guestName} (Apt ${aptNumber})!`
+  };
+  
+  const enjoy = {
+    pt: 'Bom dia de praia!',
+    es: '¡Buen día de playa!',
+    en: 'Have a great beach day!'
+  };
+  
+  return `${translations[language].prefix}\n\n${greetings[language]}\n\n${tides}\n\n${enjoy[language]}`;
 }
