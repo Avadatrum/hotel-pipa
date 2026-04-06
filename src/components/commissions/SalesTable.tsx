@@ -4,10 +4,12 @@ import { useMemo } from 'react';
 import { useCommissions } from '../../contexts/CommissionContext';
 
 // 👇 Tipo para uma venda
+// CORREÇÃO: Alterado para 'string | null | undefined' em todos os campos opcionais
+// para garantir compatibilidade total com o tipo global vindo do banco de dados.
 interface Sale {
   id: string;
   clienteNome: string;
-  clienteTelefone?: string;
+  clienteTelefone?: string | null;
   passeioNome: string;
   vendedorNome: string;
   dataVenda: any;
@@ -15,11 +17,11 @@ interface Sale {
   valorTotal: number;
   comissaoCalculada: number;
   status: 'confirmada' | 'cancelada';
-  quantidade?: number;
-  quantidadePessoas?: number; // Adicionado para a lógica de exibição
-  agenciaId?: string;
-  agenciaNome?: string;    
-  agenciaTelefone?: string; // Adicionado para o tipo enriquecido
+  quantidade?: number | null;
+  quantidadePessoas?: number | null; 
+  agenciaId?: string | null; 
+  agenciaNome?: string | null;    
+  agenciaTelefone?: string | null; 
 }
 
 // 👇 Props
@@ -84,12 +86,14 @@ export function SalesTable({
 
   const enrichedSales = useMemo(() => {
     return sales.map(sale => {
+      // A lógica segura trata valores null ou undefined
       const agency = sale.agenciaId ? agencyMap[sale.agenciaId] : null;
       
       return {
         ...sale,
-        agenciaNome: sale.agenciaNome || agency?.nome,
-        agenciaTelefone: agency?.telefone,
+        // Se agenciaNome for null, usa o do mapa. Se o mapa for null/undefined, retorna undefined (o JSX lida bem com isso)
+        agenciaNome: sale.agenciaNome || agency?.nome || undefined,
+        agenciaTelefone: agency?.telefone || undefined,
       };
     });
   }, [sales, agencyMap]);
