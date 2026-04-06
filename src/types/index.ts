@@ -1,5 +1,3 @@
-// src/types/index.ts
-
 // Tipo para um apartamento
 export interface Apartment {
   occupied: boolean;
@@ -8,6 +6,7 @@ export interface Apartment {
   chips: number;
   block: string;
   guest: string;
+  phone?: string; // NOVO: Telefone do hóspede (WhatsApp)
 }
 
 // Tipos para Autenticação

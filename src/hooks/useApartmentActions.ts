@@ -6,8 +6,8 @@ export function useApartmentActions() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Função de check-in
-  const handleCheckin = async (aptNumber: number, guestName: string, pax: number) => {
+  // Função de check-in (MODIFICADA: adicionado parâmetro phone)
+  const handleCheckin = async (aptNumber: number, guestName: string, pax: number, phone?: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -17,7 +17,7 @@ export function useApartmentActions() {
       if (pax < 1) {
         throw new Error('Selecione a quantidade de hóspedes');
       }
-      await doCheckin(aptNumber, guestName, pax);
+      await doCheckin(aptNumber, guestName, pax, phone);
       return { success: true };
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao fazer check-in');

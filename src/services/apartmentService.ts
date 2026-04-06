@@ -1,4 +1,4 @@
-// src/services/apartmentService.ts
+//src/services/apartmentService.ts
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Apartment } from '../types';
@@ -19,23 +19,36 @@ export async function updateApartment(aptNumber: number, data: Partial<Apartment
   await setDoc(aptRef, data, { merge: true }); // merge = true mantém os campos não alterados
 }
 
-// Função de Check-in
+// Função de Check-in (MODIFICADA: adicionado parâmetro phone)
 export async function doCheckin(
   aptNumber: number, 
   guestName: string, 
-  pax: number
+  pax: number,
+  phone?: string  // NOVO: telefone opcional
 ) {
-  // Atualiza o apartamento
-  await updateApartment(aptNumber, {
+  // Prepara os dados para salvar
+  const updateData: Partial<Apartment> = {
     occupied: true,
     guest: guestName,
     pax: pax,
     chips: pax,      // cada hóspede ganha uma ficha
     towels: 0        // começa sem toalhas
-  });
+  };
   
-  // Registra no log
-  await addLog(aptNumber, `Check-in — ${guestName} | ${pax} hóspede(s) | ${pax} ficha(s)`, 'checkin');
+  // Só adiciona telefone se foi fornecido
+  if (phone && phone.trim()) {
+    updateData.phone = phone.trim();
+  }
+  
+  // Atualiza o apartamento
+  await updateApartment(aptNumber, updateData);
+  
+  // Registra no log (inclui telefone se tiver)
+  const logMessage = phone && phone.trim() 
+    ? `Check-in — ${guestName} | ${pax} hóspede(s) | ${pax} ficha(s) | Tel: ${phone}`
+    : `Check-in — ${guestName} | ${pax} hóspede(s) | ${pax} ficha(s)`;
+    
+  await addLog(aptNumber, logMessage, 'checkin');
   
   return { success: true };
 }
@@ -61,7 +74,8 @@ export async function doCheckout(aptNumber: number, lostTowels: number) {
     guest: '',
     pax: 0,
     chips: 0,
-    towels: 0
+    towels: 0,
+    phone: ''  // NOVO: limpa também o telefone
   });
   
   return { success: true, lostTowels };
