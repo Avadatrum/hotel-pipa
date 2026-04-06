@@ -1,61 +1,78 @@
 // src/utils/commissionCalculations.ts
-import { db } from '../services/firebase';
-import { doc, getDoc } from 'firebase/firestore';
 import type { Tour, Agency, CustomCommission } from '../types';
 
-export async function calculateCommission(
-  tourId: string,
-  agenciaId: string | null,
-  valorTotal: number,
+/**
+ * Calcula a comissão unitária (por unidade: por passeio ou por pessoa).
+ *
+ * Hierarquia:
+ *  1. Comissão personalizada ativa para o passeio (valor fixo R$)
+ *  2. Taxa percentual da agência sobre o precoBase do tour
+ *  3. comissaoPadrao do tour (valor fixo R$ — não percentual)
+ *
+ * NOTA: comissaoPadrao é sempre um valor fixo em R$, nunca percentual.
+ * A função retorna o valor UNITÁRIO. Quem chama é responsável por
+ * multiplicar por quantidade/quantidadePessoas conforme tipoPreco.
+ */
+export function calcularComissaoUnitaria(
+  tour: Tour,
+  agencia: Agency | null,
   customCommissions: CustomCommission[]
-): Promise<number> {
-  // 1. Verificar comissão personalizada ativa (apenas comissão fixa, sem percentual)
-  const activeCustom = customCommissions.find(cc => {
-    const isForTour = cc.passeioId === tourId;
-    const isForAgency = !cc.passeioId && cc.agenciaId === agenciaId;
-    const isActive = !cc.dataFim || new Date(cc.dataFim.toDate()) > new Date();
-    return (isForTour || isForAgency) && isActive;
-  });
+): number {
+  // 1. Comissão personalizada ativa para o passeio
+  const agora = new Date();
+  const promo = customCommissions.find(cc =>
+    cc.passeioId === tour.id &&
+    (!cc.dataFim || cc.dataFim.toDate() > agora)
+  );
+  if (promo) return promo.valor;
 
-  if (activeCustom) {
-    // Comissão personalizada é sempre um valor fixo (R$)
-    return activeCustom.valor;
+  // 2. Taxa percentual da agência (sobre precoBase do tour)
+  if (agencia?.taxaComissaoPersonalizada != null) {
+    return (tour.precoBase * agencia.taxaComissaoPersonalizada) / 100;
   }
 
-  // 2. Verificar comissão da agência (taxa percentual)
-  if (agenciaId) {
-    const agencyRef = doc(db, 'agencies', agenciaId);
-    const agencySnap = await getDoc(agencyRef);
-    const agencyData = agencySnap.data() as Agency | undefined;
-    
-    // Verificar se agencyData existe e tem taxaComissaoPersonalizada
-    if (agencyData?.taxaComissaoPersonalizada !== undefined && agencyData.taxaComissaoPersonalizada !== null) {
-      return (valorTotal * agencyData.taxaComissaoPersonalizada) / 100;
-    }
-  }
+  // 3. Comissão padrão do tour (valor fixo R$)
+  return tour.comissaoPadrao ?? 0;
+}
 
-  // 3. Usar comissão padrão do passeio (percentual)
-  const tourRef = doc(db, 'tours', tourId);
-  const tourSnap = await getDoc(tourRef);
-  const tourData = tourSnap.data() as Tour | undefined;
-  
-  if (tourData?.comissaoPadrao !== undefined && tourData.comissaoPadrao !== null) {
-    return (valorTotal * tourData.comissaoPadrao) / 100;
+/**
+ * Calcula o valor total da venda.
+ */
+export function calcularValorTotal(
+  tour: Tour,
+  quantidade: number,
+  quantidadePessoas: number
+): number {
+  if (tour.tipoPreco === 'por_passeio') {
+    return tour.precoBase * quantidade;
   }
+  return tour.precoBase * quantidadePessoas * quantidade;
+}
 
-  // 4. Comissão padrão global (10%)
-  return valorTotal * 0.10;
+/**
+ * Calcula a comissão total da venda.
+ */
+export function calcularComissaoTotal(
+  comissaoUnitaria: number,
+  tour: Tour,
+  quantidade: number,
+  quantidadePessoas: number
+): number {
+  if (tour.tipoPreco === 'por_passeio') {
+    return comissaoUnitaria * quantidade;
+  }
+  return comissaoUnitaria * quantidadePessoas * quantidade;
 }
 
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
-    currency: 'BRL'
+    currency: 'BRL',
   }).format(value);
 }
 
-export function formatDate(timestamp: any): string {
-  if (!timestamp) return '';
-  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-  return new Intl.DateTimeFormat('pt-BR').format(date);
+export function formatDate(date: Date | any): string {
+  if (!date) return '';
+  const d = date.toDate ? date.toDate() : new Date(date);
+  return new Intl.DateTimeFormat('pt-BR').format(d);
 }

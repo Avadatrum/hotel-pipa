@@ -15,29 +15,24 @@ export function CommissionCharts() {
   const { sales, loading } = useCommissions();
   const [period, setPeriod] = useState<Period>('6m');
 
-  // Filtra vendas confirmadas pelo período selecionado
   const filteredSales = useMemo(() => {
     const months = period === '3m' ? 3 : period === '6m' ? 6 : 12;
     const cutoff = new Date();
     cutoff.setMonth(cutoff.getMonth() - months);
     return (sales || []).filter(s => {
       if (s.status !== 'confirmada') return false;
-      try {
-        return s.dataVenda.toDate() >= cutoff;
-      } catch {
-        return false;
-      }
+      try { return s.dataVenda.toDate() >= cutoff; }
+      catch { return false; }
     });
   }, [sales, period]);
 
-  // Top vendedores
   const salesByVendor = useMemo<ChartData[]>(() => {
     const map = new Map<string, { valor: number; comissao: number }>();
     filteredSales.forEach(sale => {
       const cur = map.get(sale.vendedorNome) || { valor: 0, comissao: 0 };
       map.set(sale.vendedorNome, {
         valor: cur.valor + sale.valorTotal,
-        comissao: cur.comissao + sale.comissaoCalculada
+        comissao: cur.comissao + sale.comissaoCalculada,
       });
     });
     return Array.from(map.entries())
@@ -46,15 +41,13 @@ export function CommissionCharts() {
       .slice(0, 5);
   }, [filteredSales]);
 
-  // Top passeios
   const salesByTour = useMemo<ChartData[]>(() => {
-    const map = new Map<string, { valor: number; comissao: number; qty: number }>();
+    const map = new Map<string, { valor: number; comissao: number }>();
     filteredSales.forEach(sale => {
-      const cur = map.get(sale.passeioNome) || { valor: 0, comissao: 0, qty: 0 };
+      const cur = map.get(sale.passeioNome) || { valor: 0, comissao: 0 };
       map.set(sale.passeioNome, {
         valor: cur.valor + sale.valorTotal,
         comissao: cur.comissao + sale.comissaoCalculada,
-        qty: cur.qty + (sale.quantidade || 1)
       });
     });
     return Array.from(map.entries())
@@ -63,7 +56,6 @@ export function CommissionCharts() {
       .slice(0, 5);
   }, [filteredSales]);
 
-  // Evolução mensal
   const monthlyData = useMemo(() => {
     const months = period === '3m' ? 3 : period === '6m' ? 6 : 12;
     const map = new Map<string, { vendas: number; comissao: number; key: string }>();
@@ -80,28 +72,22 @@ export function CommissionCharts() {
         const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         if (map.has(key)) {
           const cur = map.get(key)!;
-          map.set(key, {
-            ...cur,
-            vendas: cur.vendas + sale.valorTotal,
-            comissao: cur.comissao + sale.comissaoCalculada
-          });
+          map.set(key, { ...cur, vendas: cur.vendas + sale.valorTotal, comissao: cur.comissao + sale.comissaoCalculada });
         }
       } catch {}
     });
     return Array.from(map.values());
   }, [filteredSales, period]);
 
-  // Totais gerais para summary cards
   const totals = useMemo(() => ({
     vendas: filteredSales.reduce((s, x) => s + x.valorTotal, 0),
     comissoes: filteredSales.reduce((s, x) => s + x.comissaoCalculada, 0),
-    qtd: filteredSales.length
+    qtd: filteredSales.length,
   }), [filteredSales]);
 
   const maxVendorValue = Math.max(...salesByVendor.map(d => d.valor), 1);
   const maxTourValue = Math.max(...salesByTour.map(d => d.valor), 1);
   const maxMonthlyValue = Math.max(...monthlyData.map(d => d.vendas), 1);
-
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
   if (loading) {
@@ -121,7 +107,7 @@ export function CommissionCharts() {
     <div className="space-y-5">
       {/* Seletor de período */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-800 dark:text-white">📊 Análise de Desempenho</h2>
+        <h2 className="text-lg font-bold text-gray-800 dark:text-white">Análise de desempenho</h2>
         <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5 gap-0.5">
           {(['3m', '6m', '12m'] as Period[]).map(p => (
             <button
@@ -139,45 +125,35 @@ export function CommissionCharts() {
         </div>
       </div>
 
-      {/* Summary cards */}
+      {/* Totais */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
-          <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
-            {formatCurrency(totals.vendas)}
-          </div>
-          <div className="text-xs text-blue-500">Total Vendas</div>
+          <div className="text-lg font-bold text-blue-700 dark:text-blue-300">{formatCurrency(totals.vendas)}</div>
+          <div className="text-xs text-blue-500">Total de vendas</div>
         </div>
         <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
-          <div className="text-lg font-bold text-green-700 dark:text-green-300">
-            {formatCurrency(totals.comissoes)}
-          </div>
+          <div className="text-lg font-bold text-green-700 dark:text-green-300">{formatCurrency(totals.comissoes)}</div>
           <div className="text-xs text-green-500">Comissões</div>
         </div>
         <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 text-center">
-          <div className="text-lg font-bold text-purple-700 dark:text-purple-300">
-            {totals.qtd}
-          </div>
+          <div className="text-lg font-bold text-purple-700 dark:text-purple-300">{totals.qtd}</div>
           <div className="text-xs text-purple-500">Transações</div>
         </div>
       </div>
 
-      {/* Evolução Mensal — Gráfico de barras melhorado */}
+      {/* Evolução mensal */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-        <h3 className="font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-          📈 Evolução Mensal
-        </h3>
+        <h3 className="font-semibold text-gray-800 dark:text-white mb-4">Evolução mensal</h3>
         {monthlyData.every(m => m.vendas === 0) ? (
           <p className="text-center text-gray-400 py-10 text-sm">Nenhuma venda no período selecionado</p>
         ) : (
           <div className="space-y-2">
-            {/* Barras verticais com valores */}
             <div className="flex items-end gap-1.5 h-36">
               {monthlyData.map((month, idx) => {
                 const pct = (month.vendas / maxMonthlyValue) * 100;
                 return (
                   <div key={idx} className="flex-1 flex flex-col items-center gap-1 group">
                     <div className="relative w-full flex flex-col justify-end" style={{ height: '120px' }}>
-                      {/* Tooltip on hover */}
                       <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                         {formatCurrency(month.vendas)}
                       </div>
@@ -190,15 +166,11 @@ export function CommissionCharts() {
                 );
               })}
             </div>
-            {/* Labels meses */}
             <div className="flex gap-1.5">
               {monthlyData.map((month, idx) => (
-                <div key={idx} className="flex-1 text-center text-xs text-gray-400 truncate">
-                  {month.key}
-                </div>
+                <div key={idx} className="flex-1 text-center text-xs text-gray-400 truncate">{month.key}</div>
               ))}
             </div>
-            {/* Legenda comissão */}
             <div className="flex items-end gap-1.5 mt-1">
               {monthlyData.map((month, idx) => {
                 const pct = (month.comissao / maxMonthlyValue) * 100;
@@ -225,9 +197,7 @@ export function CommissionCharts() {
 
       {/* Top Vendedores */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-        <h3 className="font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-          🏆 Top Vendedores
-        </h3>
+        <h3 className="font-semibold text-gray-800 dark:text-white mb-4">Top vendedores</h3>
         {salesByVendor.length === 0 ? (
           <p className="text-center text-gray-400 py-8 text-sm">Nenhuma venda no período</p>
         ) : (
@@ -236,8 +206,10 @@ export function CommissionCharts() {
               <div key={vendor.name} className="space-y-1">
                 <div className="flex justify-between items-center text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                      style={{ backgroundColor: COLORS[idx] }}>
+                    <span
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                      style={{ backgroundColor: COLORS[idx] }}
+                    >
                       {idx + 1}
                     </span>
                     <span className="text-gray-700 dark:text-gray-200 font-medium truncate max-w-[140px]">
@@ -245,21 +217,14 @@ export function CommissionCharts() {
                     </span>
                   </div>
                   <div className="text-right">
-                    <div className="font-semibold text-gray-800 dark:text-white text-xs">
-                      {formatCurrency(vendor.valor)}
-                    </div>
-                    <div className="text-xs text-green-600 dark:text-green-400">
-                      +{formatCurrency(vendor.comissao)}
-                    </div>
+                    <div className="font-semibold text-gray-800 dark:text-white text-xs">{formatCurrency(vendor.valor)}</div>
+                    <div className="text-xs text-green-600 dark:text-green-400">+{formatCurrency(vendor.comissao)}</div>
                   </div>
                 </div>
                 <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
                   <div
                     className="h-2 rounded-full transition-all duration-700"
-                    style={{
-                      width: `${(vendor.valor / maxVendorValue) * 100}%`,
-                      backgroundColor: COLORS[idx]
-                    }}
+                    style={{ width: `${(vendor.valor / maxVendorValue) * 100}%`, backgroundColor: COLORS[idx] }}
                   />
                 </div>
               </div>
@@ -270,9 +235,7 @@ export function CommissionCharts() {
 
       {/* Top Passeios */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-        <h3 className="font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-          🎫 Passeios Mais Vendidos
-        </h3>
+        <h3 className="font-semibold text-gray-800 dark:text-white mb-4">Passeios e transfers mais vendidos</h3>
         {salesByTour.length === 0 ? (
           <p className="text-center text-gray-400 py-8 text-sm">Nenhuma venda no período</p>
         ) : (
@@ -281,17 +244,12 @@ export function CommissionCharts() {
               <div key={tour.name} className="space-y-1">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-700 dark:text-gray-200 truncate max-w-[60%]">{tour.name}</span>
-                  <span className="font-semibold text-gray-800 dark:text-white text-xs">
-                    {formatCurrency(tour.valor)}
-                  </span>
+                  <span className="font-semibold text-gray-800 dark:text-white text-xs">{formatCurrency(tour.valor)}</span>
                 </div>
                 <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
                   <div
                     className="h-2 rounded-full transition-all duration-700"
-                    style={{
-                      width: `${(tour.valor / maxTourValue) * 100}%`,
-                      backgroundColor: COLORS[idx]
-                    }}
+                    style={{ width: `${(tour.valor / maxTourValue) * 100}%`, backgroundColor: COLORS[idx] }}
                   />
                 </div>
               </div>

@@ -16,8 +16,10 @@ interface Sale {
   comissaoCalculada: number;
   status: 'confirmada' | 'cancelada';
   quantidade?: number;
+  quantidadePessoas?: number; // Adicionado para a lógica de exibição
   agenciaId?: string;
   agenciaNome?: string;    
+  agenciaTelefone?: string; // Adicionado para o tipo enriquecido
 }
 
 // 👇 Props
@@ -203,7 +205,14 @@ export function SalesTable({
               </td>
 
               <td className="px-3 py-2.5 text-sm text-right text-gray-500 dark:text-gray-400 hidden md:table-cell">
-                {sale.quantidade || 1}
+                <div>
+                  <div>{sale.quantidade || 1}</div>
+                  {sale.quantidadePessoas && sale.quantidadePessoas > 1 && (
+                    <div className="text-xs text-gray-400">
+                      {sale.quantidadePessoas} pessoas
+                    </div>
+                  )}
+                </div>
               </td>
 
               <td className="px-3 py-2.5 text-sm text-right text-gray-600 dark:text-gray-300 whitespace-nowrap hidden sm:table-cell">
