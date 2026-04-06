@@ -1,4 +1,4 @@
-//src/services/apartmentService.ts
+// src/services/apartmentService.ts
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Apartment } from '../types';
@@ -128,4 +128,20 @@ async function addLoss(apt: number, block: string, guest: string, lost: number) 
     date: now.toLocaleDateString('pt-BR'),
     ts: Date.now()
   });
+}
+
+// Função para atualizar apenas o telefone do apartamento
+export async function updateApartmentPhone(aptNumber: number, phone: string) {
+  try {
+    const aptRef = doc(db, 'apartments', String(aptNumber));
+    await setDoc(aptRef, { phone: phone }, { merge: true });
+    
+    // Registra no log a alteração do telefone
+    await addLog(aptNumber, `📱 Telefone atualizado: ${phone}`, 'other');
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Erro ao atualizar telefone:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Erro desconhecido' };
+  }
 }
