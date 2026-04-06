@@ -3,6 +3,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { buscarTabuaMare, listarPortosPorEstado } from '../services/tabuaMareService';
+// Adicione no topo dos imports:
+import { SendTideModal } from '../components/TabuaMare/SendTideModal';
 
 const PORTO_PADRAO = 'rn04';
 
@@ -30,6 +32,10 @@ export function TabuaDeMarePage() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
 
+  // Adicione dentro do componente, após as declarações de estado:
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [selectedDayData, setSelectedDayData] = useState<DiaData | null>(null);
+
   // Carrega lista de portos do RN
   useEffect(() => {
     listarPortosPorEstado('rn').then((res: any) => {
@@ -40,6 +46,12 @@ export function TabuaDeMarePage() {
 
   // Número de dias do mês atual
   const diasDoMes = new Date(ano, mes, 0).getDate();
+
+  // Função para abrir o modal com o dia selecionado
+  const handleSendTide = (dia: DiaData) => {
+    setSelectedDayData(dia);
+    setShowSendModal(true);
+  };
 
   const buscar = useCallback(async () => {
     setLoading(true);
@@ -88,19 +100,35 @@ export function TabuaDeMarePage() {
           </p>
         </div>
 
-        {/* Seletor de porto */}
-        <select
-          value={portoId}
-          onChange={e => setPortoId(e.target.value)}
-          className="text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-cyan-500"
-        >
-          {portos.length === 0 && <option value={PORTO_PADRAO}>RN04 — Porto de Natal</option>}
-          {portos.map(p => (
-            <option key={p.id} value={p.id}>
-              {p.id.toUpperCase()} — {p.nome.split('(')[0].trim()}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          {/* Seletor de porto */}
+          <select
+            value={portoId}
+            onChange={e => setPortoId(e.target.value)}
+            className="text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+          >
+            {portos.length === 0 && <option value={PORTO_PADRAO}>RN04 — Porto de Natal</option>}
+            {portos.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.id.toUpperCase()} — {p.nome.split('(')[0].trim()}
+              </option>
+            ))}
+          </select>
+
+          {/* Botão de enviar - coloque ao lado do seletor de porto */}
+          <button
+            onClick={() => {
+              // Pega o dia atual (hoje) ou o primeiro dia disponível
+              const hojeNum = new Date().getDate();
+              const diaHoje = mesData?.days.find(d => d.day === hojeNum) || mesData?.days[0];
+              if (diaHoje) handleSendTide(diaHoje);
+            }}
+            disabled={!mesData || loading}
+            className="text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg px-3 py-1.5 transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            📱 Enviar para hóspede
+          </button>
+        </div>
       </div>
 
       {/* Navegação de mês */}
@@ -206,6 +234,15 @@ export function TabuaDeMarePage() {
                         );
                       })}
                     </div>
+
+                    {/* Botão de enviar para este dia específico */}
+                    <button
+                      onClick={() => handleSendTide(dia)}
+                      className="ml-auto text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 transition-colors flex items-center gap-0.5 shrink-0"
+                      title={`Enviar maré do dia ${dia.day}/${mes} para hóspede`}
+                    >
+                      📱
+                    </button>
                   </div>
                 </div>
               );
@@ -223,6 +260,21 @@ export function TabuaDeMarePage() {
           </div>
         </>
       )}
+
+      {/* Modal para enviar tábua de maré */}
+      <SendTideModal
+        isOpen={showSendModal}
+        onClose={() => {
+          setShowSendModal(false);
+          setSelectedDayData(null);
+        }}
+        tideData={selectedDayData}
+        mes={mes}
+        ano={ano}
+        portoNome={portoId.toUpperCase()}
+        portoId={portoId}
+        meanLevel={meanLevel}
+      />
     </div>
   );
 }
