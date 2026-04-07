@@ -1,98 +1,30 @@
 // src/types/index.ts
-
-// Tipo para um apartamento
 export interface Apartment {
-  occupied: boolean;
-  pax: number;
-  towels: number;
-  chips: number;
-  block: string;
-  guest: string;
-  phone?: string;
+  occupied: boolean; pax: number; towels: number; chips: number;
+  block: string; guest: string; phone?: string;
 }
-
-// Tipos para Autenticação
 export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'operator';
-  createdAt: string;
-  createdBy?: string;
+  id: string; name: string; email: string;
+  role: 'admin' | 'operator'; createdAt: string; createdBy?: string;
 }
-
-export interface UserCredentials {
-  email: string;
-  password: string;
-}
-
-export interface AuthState {
-  user: User | null;
-  loading: boolean;
-  error: string | null;
-}
-
-// Tipo para histórico
+export interface UserCredentials { email: string; password: string; }
+export interface AuthState { user: User | null; loading: boolean; error: string | null; }
 export interface LogEntry {
-  id?: string;
-  time: string;
-  date: string;
-  apt: number;
-  msg: string;
-  type: 'checkin' | 'checkout' | 'towel' | 'other';
-  ts: number;
-  userId: string;
-  userName: string;
+  id?: string; time: string; date: string; apt: number; msg: string;
+  type: 'checkin' | 'checkout' | 'towel' | 'other'; ts: number; userId: string; userName: string;
 }
-
-// Tipo para perdas
 export interface LossEntry {
-  id?: string;
-  apt: number;
-  block: string;
-  guest: string;
-  lost: number;
-  date: string;
-  ts: number;
-  userId: string;
-  userName: string;
+  id?: string; apt: number; block: string; guest: string;
+  lost: number; date: string; ts: number; userId: string; userName: string;
 }
-
-// Tipo para recibos
 export interface Receipt {
-  id?: string;
-  ref: string;
-  name: string;
-  cpf: string;
-  value: string;
-  date: string;
-  period: string;
-  extra: string;
-  num: string;
-  createdAt: string;
-  ts: number;
-  userId: string;
-  userName: string;
-  updatedAt?: string;
-  updatedTs?: number;
-  updatedBy?: string;
+  id?: string; ref: string; name: string; cpf: string; value: string; date: string;
+  period: string; extra: string; num: string; createdAt: string; ts: number;
+  userId: string; userName: string; updatedAt?: string; updatedTs?: number; updatedBy?: string;
 }
-
-// Tipo para documentos
 export interface Document {
-  id?: string;
-  name: string;
-  desc: string;
-  cat: string;
-  mime: string;
-  filename: string;
-  data: string;
-  createdAt: string;
-  ts: number;
-  userId: string;
-  userName: string;
+  id?: string; name: string; desc: string; cat: string; mime: string;
+  filename: string; data: string; createdAt: string; ts: number; userId: string; userName: string;
 }
-
-// ============ TIPOS PARA COMISSÕES ============
-// Re-exporta tudo de commission.types para manter compatibilidade
+// Re-exporta tipos de comissão para compatibilidade
 export type { TipoPreco, Tour, Agency, CustomCommission, Sale, CommissionAudit, AppSettings } from './commission.types';

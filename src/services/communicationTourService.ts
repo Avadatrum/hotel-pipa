@@ -9,143 +9,115 @@ export interface SaleWithDetails extends Sale {
 
 function parseDataPasseio(dateString: any): { dateObj: Date; timeString: string } {
   if (!dateString) return { dateObj: new Date(), timeString: '' };
-
   if (typeof dateString === 'string' && dateString.includes(' ')) {
     const [datePart, timePart] = dateString.split(' ');
-    return {
-      dateObj: new Date(`${datePart}T${timePart}`),
-      timeString: timePart,
-    };
+    return { dateObj: new Date(`${datePart}T${timePart}`), timeString: timePart };
   }
-
   const dateObj = new Date(dateString);
-  const timeString = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  return { dateObj, timeString };
+  return { dateObj, timeString: dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) };
 }
 
 function descricaoQuantidade(sale: SaleWithDetails): string {
-  const tipoPreco = sale.tipoPreco ?? sale.tourData?.tipoPreco ?? 'por_pessoa';
-  const qtdPasseios = sale.quantidade || 1;
+  const tipo = sale.tipoPreco ?? sale.tourData?.tipoPreco ?? 'por_pessoa';
+  const qtdSaidas = sale.quantidade || 1;
   const qtdPessoas = sale.quantidadePessoas || 1;
-  const capacidade = sale.tourData?.capacidadeMaxima;
-
-  if (tipoPreco === 'por_passeio') {
-    const partes: string[] = [];
-    if (qtdPasseios > 1) partes.push(`${qtdPasseios} veículo(s)`);
-    partes.push(`${qtdPessoas} pessoa(s)`);
-    if (capacidade && capacidade > 0) partes.push(`capacidade máxima: ${capacidade}`);
+  const cap = sale.tourData?.capacidadeMaxima;
+  if (tipo === 'por_passeio') {
+    const partes = [`${qtdPessoas} pessoa(s)`];
+    if (qtdSaidas > 1) partes.unshift(`${qtdSaidas} veículo(s)`);
+    if (cap) partes.push(`cap. máx: ${cap}`);
     return partes.join(' — ');
   }
-
-  // por_pessoa
-  if (qtdPasseios > 1) {
-    return `${qtdPessoas} pessoa(s) x ${qtdPasseios} saída(s)`;
-  }
-  return `${qtdPessoas} pessoa(s)`;
+  return qtdSaidas > 1
+    ? `${qtdPessoas} pessoa(s) x ${qtdSaidas} saída(s)`
+    : `${qtdPessoas} pessoa(s)`;
 }
 
 function descricaoPreco(sale: SaleWithDetails): string {
-  const tipoPreco = sale.tipoPreco ?? sale.tourData?.tipoPreco ?? 'por_pessoa';
-  const precoUnitario = sale.precoUnitarioVendido ?? sale.tourData?.precoBase ?? 0;
-  const qtdPasseios = sale.quantidade || 1;
-
-  if (tipoPreco === 'por_passeio') {
-    const label = qtdPasseios > 1
-      ? `${formatCurrency(precoUnitario)} por veículo x ${qtdPasseios}`
-      : `${formatCurrency(precoUnitario)} por veículo`;
-    return `${label} = ${formatCurrency(sale.valorTotal)}`;
-  }
-
+  const tipo = sale.tipoPreco ?? sale.tourData?.tipoPreco ?? 'por_pessoa';
+  const preco = sale.precoUnitarioVendido ?? sale.tourData?.precoBase ?? 0;
+  const qtdSaidas = sale.quantidade || 1;
   const qtdPessoas = sale.quantidadePessoas || 1;
-  const label = qtdPasseios > 1
-    ? `${formatCurrency(precoUnitario)} por pessoa x ${qtdPessoas} x ${qtdPasseios} saída(s)`
-    : `${formatCurrency(precoUnitario)} por pessoa x ${qtdPessoas}`;
-  return `${label} = ${formatCurrency(sale.valorTotal)}`;
+  if (tipo === 'por_passeio') {
+    const label = qtdSaidas > 1
+      ? `${formatCurrency(preco)} x ${qtdSaidas} veículo(s)`
+      : `${formatCurrency(preco)} por veículo`;
+    return `${label} = *${formatCurrency(sale.valorTotal)}*`;
+  }
+  const label = qtdSaidas > 1
+    ? `${formatCurrency(preco)} x ${qtdPessoas} pessoa(s) x ${qtdSaidas} saída(s)`
+    : `${formatCurrency(preco)} x ${qtdPessoas} pessoa(s)`;
+  return `${label} = *${formatCurrency(sale.valorTotal)}*`;
 }
 
 export const communicationTourService = {
-  /**
-   * Gera relatório formatado para envio à agência via WhatsApp.
-   * Inclui dados de comissão — informação relevante para a agência.
-   */
+  /** Relatório completo para agência (inclui comissão). */
   generateAgencyReport(sale: SaleWithDetails): string {
     const { dateObj, timeString } = parseDataPasseio(sale.dataPasseioRealizacao);
-    const dataFormatada = formatDate(dateObj);
     const horario = timeString ? ` às ${timeString}` : '';
-
-    return `
-*RELATÓRIO DE PASSEIO — HOTEL PIPA*
+    return `*RELATÓRIO DE PASSEIO — HOTEL PIPA*
 
 *Passeio:* ${sale.passeioNome}
 *Cliente:* ${sale.clienteNome}${sale.clienteTelefone ? `\n*Telefone:* ${sale.clienteTelefone}` : ''}
-*Data:* ${dataFormatada}${horario}
+*Data:* ${formatDate(dateObj)}${horario}
 *Participantes:* ${descricaoQuantidade(sale)}
-
-*Detalhamento de Preço:*
-${descricaoPreco(sale)}
+*Valor:* ${descricaoPreco(sale)}
 *Comissão:* ${formatCurrency(sale.comissaoCalculada)}
-
-${sale.observacoes ? `*Observações:* ${sale.observacoes}` : ''}
+${sale.observacoes ? `\n*Obs:* ${sale.observacoes}` : ''}
 ---
-Hotel Pipa — Sistema de Gestão
-${new Date().toLocaleString('pt-BR')}
-    `.trim();
+Hotel Pipa — ${new Date().toLocaleString('pt-BR')}`.trim();
   },
 
-  /**
-   * Gera confirmação de passeio para o hóspede via WhatsApp.
-   * Não inclui dados de comissão — foco na experiência do cliente.
-   */
+  /** Confirmação limpa para o hóspede (sem dados de comissão). */
   generateGuestConfirmation(sale: SaleWithDetails): string {
     const { dateObj, timeString } = parseDataPasseio(sale.dataPasseioRealizacao);
-    const dataFormatada = formatDate(dateObj);
     const horario = timeString ? ` às ${timeString}` : '';
-    const tipoPreco = sale.tipoPreco ?? sale.tourData?.tipoPreco ?? 'por_pessoa';
     const qtdPessoas = sale.quantidadePessoas || 1;
+    return `*CONFIRMAÇÃO DE PASSEIO — HOTEL PIPA*
 
-    const linhaParticipantes = tipoPreco === 'por_passeio'
-      ? `*Participantes:* ${qtdPessoas} pessoa(s)`
-      : `*Participantes:* ${qtdPessoas} pessoa(s)`;
-
-    return `
-*CONFIRMAÇÃO DE PASSEIO — HOTEL PIPA*
-
-Olá, ${sale.clienteNome}! Seu passeio foi confirmado com sucesso.
+Olá, ${sale.clienteNome}! Seu passeio foi confirmado.
 
 *Passeio:* ${sale.passeioNome}
-*Data:* ${dataFormatada}${horario}
-${linhaParticipantes}
+*Data:* ${formatDate(dateObj)}${horario}
+*Participantes:* ${qtdPessoas} pessoa(s)
 *Valor:* ${formatCurrency(sale.valorTotal)}
 
-*O que levar:*
-- Protetor solar e repelente
-- Roupa de banho e toalha
-- Dinheiro para despesas extras
+O que levar: protetor solar, repelente, roupa de banho, toalha e dinheiro para extras.
+Favor estar no lobby 15 minutos antes.
 
-Favor estar no lobby 15 minutos antes do horário de saída.
+Dúvidas? Entre em contato.
+*Hotel Pipa*`.trim();
+  },
 
-Dúvidas? Entre em contato conosco.
+  /** Texto de divulgação do passeio (descricao cadastrada no tour). */
+  generateTourPromo(tour: Tour, customPhone?: string): string {
+    const preco = tour.tipoPreco === 'por_passeio'
+      ? `${formatCurrency(tour.precoBase)} por veículo${tour.capacidadeMaxima ? ` (até ${tour.capacidadeMaxima} pessoas)` : ''}`
+      : `${formatCurrency(tour.precoBase)} por pessoa`;
+    return `*${tour.nome}*
 
-Hotel Pipa
-    `.trim();
+${tour.descricao || 'Passeio disponível no Hotel Pipa.'}
+
+*Valor:* ${preco}
+
+Para reservas, entre em contato com a recepção do Hotel Pipa.`.trim();
   },
 
   sendWhatsAppMessage(phoneNumber: string, message: string): void {
-    let cleanPhone = phoneNumber.replace(/\D/g, '');
-    if (!cleanPhone.startsWith('55')) {
-      cleanPhone = `55${cleanPhone}`;
-    }
-    const encodedMessage = encodeURIComponent(message);
-    window.open(`https://wa.me/${cleanPhone}?text=${encodedMessage}`, '_blank');
+    let clean = phoneNumber.replace(/\D/g, '');
+    if (!clean.startsWith('55')) clean = `55${clean}`;
+    window.open(`https://wa.me/${clean}?text=${encodeURIComponent(message)}`, '_blank');
   },
 
   sendAgencyReport(sale: SaleWithDetails, agencyPhone: string): void {
-    const report = this.generateAgencyReport(sale);
-    this.sendWhatsAppMessage(agencyPhone, report);
+    this.sendWhatsAppMessage(agencyPhone, this.generateAgencyReport(sale));
   },
 
   sendGuestConfirmation(sale: SaleWithDetails, guestPhone: string): void {
-    const confirmation = this.generateGuestConfirmation(sale);
-    this.sendWhatsAppMessage(guestPhone, confirmation);
+    this.sendWhatsAppMessage(guestPhone, this.generateGuestConfirmation(sale));
+  },
+
+  sendTourPromo(tour: Tour, phone: string): void {
+    this.sendWhatsAppMessage(phone, this.generateTourPromo(tour));
   },
 };

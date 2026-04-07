@@ -1,279 +1,176 @@
 // src/components/commissions/SalesTable.tsx
-import { formatCurrency, formatDate } from '../../utils/commissionCalculations';
 import { useMemo } from 'react';
+import { formatCurrency, formatDate, safeToDate } from '../../utils/commissionCalculations';
 import { useCommissions } from '../../contexts/CommissionContext';
+import { communicationTourService } from '../../services/communicationTourService';
+import type { Sale } from '../../types/commission.types';
 
-// 👇 Tipo para uma venda
-// CORREÇÃO: Alterado para 'string | null | undefined' em todos os campos opcionais
-// para garantir compatibilidade total com o tipo global vindo do banco de dados.
-interface Sale {
-  id: string;
-  clienteNome: string;
-  clienteTelefone?: string | null;
-  passeioNome: string;
-  vendedorNome: string;
-  dataVenda: any;
-  dataPasseioRealizacao?: any;
-  valorTotal: number;
-  comissaoCalculada: number;
-  status: 'confirmada' | 'cancelada';
-  quantidade?: number | null;
-  quantidadePessoas?: number | null; 
-  agenciaId?: string | null; 
-  agenciaNome?: string | null;    
-  agenciaTelefone?: string | null; 
+interface EnrichedSale extends Sale { agenciaTelefone?: string; }
+
+interface Props {
+  sales: Sale[];
+  sortField: string;
+  sortDir: 'asc' | 'desc';
+  onSort: (f: string) => void;
+  isAdmin: boolean;
+  onEdit: (s: Sale) => void;
+  onCancel: (id: string, nome: string) => void;
+  onDelete: (id: string, nome: string) => void;
+  deletingId: string | null;
+  cancellingId: string | null;
+  deletingAll: boolean;
+  hasFilters: boolean;
+  onClearGlobalFilters: () => void;
+  onClearTableFilters: () => void;
 }
 
-// 👇 Props
-interface SalesTableProps {
-  sales: Sale[];                          
-  sortField: string;                     
-  sortDir: 'asc' | 'desc';               
-  onSort: (field: string) => void;       
-  isAdmin: boolean;                      
-  onEdit: (sale: Sale) => void;          
-  onCancel: (saleId: string, clienteNome: string) => void;  
-  onDelete: (saleId: string, clienteNome: string) => void;  
-  deletingId: string | null;             
-  cancellingId: string | null;           
-  deletingAll: boolean;                  
-  hasFilters: boolean;                   
-  onClearGlobalFilters: () => void;      
-  onClearTableFilters: () => void;       
+function Th({ label, field, sortField, sortDir, onSort, className = '' }: {
+  label: string; field?: string; sortField: string; sortDir: 'asc' | 'desc';
+  onSort: (f: string) => void; className?: string;
+}) {
+  const active = field && sortField === field;
+  return (
+    <th className={`px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 whitespace-nowrap ${field ? 'cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none' : ''} ${className}`}
+      onClick={() => field && onSort(field)}>
+      {label}{field && <span className="ml-1 opacity-60">{active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>}
+    </th>
+  );
 }
 
-function SortIcon({ field, sortField, sortDir }: { field: string; sortField: string; sortDir: 'asc' | 'desc' }) {
-  if (sortField !== field) return <span className="text-gray-300 text-xs ml-0.5">↕</span>;
-  return <span className="text-blue-500 text-xs ml-0.5">{sortDir === 'asc' ? '↑' : '↓'}</span>;
-}
-
-function safeDate(dateInput: any): Date {
-  if (!dateInput) return new Date();
-  if (typeof dateInput === 'object' && 'toDate' in dateInput && typeof dateInput.toDate === 'function') {
-    return dateInput.toDate();
-  }
-  return new Date(dateInput);
-}
-
-export function SalesTable({
-  sales,
-  sortField,
-  sortDir,
-  onSort,
-  isAdmin,
-  onEdit,
-  onCancel,
-  onDelete,
-  deletingId,
-  cancellingId,
-  deletingAll,
-  hasFilters,
-  onClearGlobalFilters,
-  onClearTableFilters,
-}: SalesTableProps) {
-
+export function SalesTable({ sales, sortField, sortDir, onSort, isAdmin, onEdit, onCancel, onDelete, deletingId, cancellingId, deletingAll, hasFilters, onClearGlobalFilters, onClearTableFilters }: Props) {
   const { agencies } = useCommissions();
 
   const agencyMap = useMemo(() => {
-    const map: Record<string, any> = {}; 
-    agencies?.forEach(agency => {
-      if (agency && agency.id) {
-        map[agency.id] = agency;
-      }
-    });
-    return map;
+    const m: Record<string, any> = {};
+    agencies?.forEach(a => { if (a.id) m[a.id] = a; });
+    return m;
   }, [agencies]);
 
-  const enrichedSales = useMemo(() => {
-    return sales.map(sale => {
-      // A lógica segura trata valores null ou undefined
-      const agency = sale.agenciaId ? agencyMap[sale.agenciaId] : null;
-      
-      return {
-        ...sale,
-        // Se agenciaNome for null, usa o do mapa. Se o mapa for null/undefined, retorna undefined (o JSX lida bem com isso)
-        agenciaNome: sale.agenciaNome || agency?.nome || undefined,
-        agenciaTelefone: agency?.telefone || undefined,
-      };
-    });
-  }, [sales, agencyMap]);
+  const enriched: EnrichedSale[] = useMemo(() =>
+    sales.map(s => ({ ...s, agenciaNome: s.agenciaNome || agencyMap[s.agenciaId || '']?.nome, agenciaTelefone: agencyMap[s.agenciaId || '']?.telefone })),
+    [sales, agencyMap]
+  );
 
-  if (enrichedSales.length === 0) {
+  const handleResendAgency = (sale: EnrichedSale) => {
+    if (!sale.agenciaId || !sale.agenciaTelefone) return;
+    const saleWithDetails = { ...sale, agencyData: agencyMap[sale.agenciaId!] };
+    communicationTourService.sendAgencyReport(saleWithDetails as any, sale.agenciaTelefone);
+  };
+
+  const handleResendGuest = (sale: EnrichedSale) => {
+    if (!sale.clienteTelefone) return;
+    communicationTourService.sendGuestConfirmation(sale as any, sale.clienteTelefone);
+  };
+
+  if (enriched.length === 0) {
     return (
-      <div className="overflow-x-auto rounded-lg border border-gray-100 dark:border-gray-700">
-        <div className="py-16 text-center text-gray-400">
-          <div className="text-4xl mb-2">🔍</div>
-          <p className="text-sm">Nenhuma venda encontrada com os filtros atuais.</p>
-          {hasFilters && (
-            <div className="mt-2 flex justify-center gap-3">
-              <button onClick={onClearGlobalFilters} className="text-xs text-blue-500 hover:underline">
-                Limpar filtros globais
-              </button>
-              <button onClick={onClearTableFilters} className="text-xs text-blue-500 hover:underline">
-                Limpar busca
-              </button>
-            </div>
-          )}
-        </div>
+      <div className="py-16 text-center text-gray-400">
+        <p className="text-4xl mb-3 opacity-30">◎</p>
+        <p className="text-sm">Nenhuma venda encontrada.</p>
+        {hasFilters && (
+          <div className="mt-3 flex justify-center gap-4">
+            <button onClick={onClearGlobalFilters} className="text-xs text-blue-500 hover:underline">Limpar filtros</button>
+            <button onClick={onClearTableFilters} className="text-xs text-blue-500 hover:underline">Limpar busca</button>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-100 dark:border-gray-700">
-      <table className="w-full">
-        <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
-          <tr className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            <th className="px-3 py-2.5 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 select-none whitespace-nowrap" onClick={() => onSort('dataVenda')}>
-              Data Venda <SortIcon field="dataVenda" sortField={sortField} sortDir={sortDir} />
-            </th>
-            <th className="px-3 py-2.5 text-left whitespace-nowrap hidden lg:table-cell">Data Passeio</th>
-            <th className="px-3 py-2.5 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 select-none" onClick={() => onSort('clienteNome')}>
-              Cliente <SortIcon field="clienteNome" sortField={sortField} sortDir={sortDir} />
-            </th>
-            <th className="px-3 py-2.5 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 select-none hidden md:table-cell" onClick={() => onSort('passeioNome')}>
-              Passeio <SortIcon field="passeioNome" sortField={sortField} sortDir={sortDir} />
-            </th>
-            <th className="px-3 py-2.5 text-left hidden md:table-cell">Agência</th>
-            <th className="px-3 py-2.5 text-right hidden md:table-cell">Qtd</th>
-            <th className="px-3 py-2.5 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 select-none hidden sm:table-cell" onClick={() => onSort('valorTotal')}>
-              Valor <SortIcon field="valorTotal" sortField={sortField} sortDir={sortDir} />
-            </th>
-            <th className="px-3 py-2.5 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 select-none" onClick={() => onSort('comissaoCalculada')}>
-              Comissão <SortIcon field="comissaoCalculada" sortField={sortField} sortDir={sortDir} />
-            </th>
-            <th className="px-3 py-2.5 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 select-none hidden lg:table-cell" onClick={() => onSort('vendedorNome')}>
-              Vendedor <SortIcon field="vendedorNome" sortField={sortField} sortDir={sortDir} />
-            </th>
-            <th className="px-3 py-2.5 text-center">Status</th>
-            {isAdmin && <th className="px-3 py-2.5 text-center">Ações</th>}
+    <div className="overflow-x-auto -mx-4 sm:mx-0">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50 dark:bg-gray-800/60 sticky top-0 z-10">
+          <tr>
+            <Th label="Data" field="dataVenda" sortField={sortField} sortDir={sortDir} onSort={onSort} className="text-left pl-4" />
+            <Th label="Cliente" field="clienteNome" sortField={sortField} sortDir={sortDir} onSort={onSort} className="text-left" />
+            <Th label="Passeio" field="passeioNome" sortField={sortField} sortDir={sortDir} onSort={onSort} className="text-left hidden md:table-cell" />
+            <Th label="Pax" sortField={sortField} sortDir={sortDir} onSort={onSort} className="text-center hidden lg:table-cell" />
+            <Th label="Valor" field="valorTotal" sortField={sortField} sortDir={sortDir} onSort={onSort} className="text-right hidden sm:table-cell" />
+            <Th label="Comissão" field="comissaoCalculada" sortField={sortField} sortDir={sortDir} onSort={onSort} className="text-right" />
+            <Th label="Status" sortField={sortField} sortDir={sortDir} onSort={onSort} className="text-center" />
+            <Th label="" sortField={sortField} sortDir={sortDir} onSort={onSort} className="text-center" />
           </tr>
         </thead>
-
-        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-          {enrichedSales.map((sale) => (
-            <tr
-              key={sale.id}
-              className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group ${
-                sale.status === 'cancelada' ? 'opacity-60' : ''
-              }`}
-            >
-              <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                {formatDate(safeDate(sale.dataVenda))}
+        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+          {enriched.map(sale => (
+            <tr key={sale.id} className={`hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors group ${sale.status === 'cancelada' ? 'opacity-50' : ''}`}>
+              {/* Data */}
+              <td className="pl-4 pr-3 py-3 text-xs text-gray-500 whitespace-nowrap">
+                {formatDate(safeToDate(sale.dataVenda))}
               </td>
 
-              <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap hidden lg:table-cell">
-                {sale.dataPasseioRealizacao ? formatDate(safeDate(sale.dataPasseioRealizacao)) : '—'}
-              </td>
-
-              <td className="px-3 py-2.5 text-sm font-medium text-gray-800 dark:text-white">
-                <div>{sale.clienteNome}</div>
+              {/* Cliente */}
+              <td className="px-3 py-3">
+                <div className="font-medium text-gray-800 dark:text-white text-sm">{sale.clienteNome}</div>
                 {sale.clienteTelefone && (
-                  <a
-                    href={`https://wa.me/${sale.clienteTelefone.replace(/\D/g, '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-500 hover:underline hover:text-blue-700 transition-colors flex items-center gap-1"
-                    title="Conversar no WhatsApp"
-                  >
-                    <span className="text-[10px]"></span>
-                    {sale.clienteTelefone}
-                  </a>
+                  <div className="text-xs text-gray-400 mt-0.5">{sale.clienteTelefone}</div>
+                )}
+                {sale.agenciaNome && (
+                  <div className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">{sale.agenciaNome}</div>
                 )}
               </td>
 
-              <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300 truncate max-w-[130px] hidden md:table-cell" title={sale.passeioNome}>
-                {sale.passeioNome}
-              </td>
-
-              {/* Agência - Nome clicável para WhatsApp */}
-              <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300 hidden md:table-cell">
-                {sale.agenciaNome && sale.agenciaTelefone ? (
-                  <button
-                    onClick={() => {
-                      const cleanPhone = sale.agenciaTelefone!.replace(/\D/g, '');
-                      window.open(`https://wa.me/55${cleanPhone}`, '_blank');
-                    }}
-                    className="font-medium text-gray-800 dark:text-white hover:text-green-600 dark:hover:text-green-400 transition-colors flex items-center gap-1"
-                    title="Falar com Agência no WhatsApp"
-                  >
-                     {sale.agenciaNome} 
-                  </button>
-                ) : sale.agenciaNome ? (
-                  <span className="font-medium text-gray-800 dark:text-white flex items-center gap-1">
-                     {sale.agenciaNome}
-                  </span>
-                ) : (
-                  <span className="text-gray-400 text-xs">—</span>
+              {/* Passeio */}
+              <td className="px-3 py-3 hidden md:table-cell">
+                <div className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[150px]">{sale.passeioNome}</div>
+                {sale.dataPasseioRealizacao && (
+                  <div className="text-xs text-gray-400 mt-0.5">{String(sale.dataPasseioRealizacao).substring(0, 10)}</div>
                 )}
               </td>
 
-              <td className="px-3 py-2.5 text-sm text-right text-gray-500 dark:text-gray-400 hidden md:table-cell">
-                <div>
-                  <div>{sale.quantidade || 1}</div>
-                  {sale.quantidadePessoas && sale.quantidadePessoas > 1 && (
-                    <div className="text-xs text-gray-400">
-                      {sale.quantidadePessoas} pessoas
-                    </div>
-                  )}
-                </div>
+              {/* Pax */}
+              <td className="px-3 py-3 text-center text-sm text-gray-500 hidden lg:table-cell">
+                <div>{sale.quantidadePessoas || sale.quantidade || 1}</div>
+                {(sale.quantidade || 1) > 1 && <div className="text-xs text-gray-400">{sale.quantidade}x</div>}
               </td>
 
-              <td className="px-3 py-2.5 text-sm text-right text-gray-600 dark:text-gray-300 whitespace-nowrap hidden sm:table-cell">
+              {/* Valor */}
+              <td className="px-3 py-3 text-right text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap hidden sm:table-cell">
                 {formatCurrency(sale.valorTotal)}
               </td>
 
-              <td className="px-3 py-2.5 text-sm text-right font-bold text-green-600 dark:text-green-400 whitespace-nowrap">
-                {formatCurrency(sale.comissaoCalculada)}
+              {/* Comissão — DESTAQUE */}
+              <td className="px-3 py-3 text-right whitespace-nowrap">
+                <span className="font-bold text-green-600 dark:text-green-400">{formatCurrency(sale.comissaoCalculada)}</span>
               </td>
 
-              <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300 hidden lg:table-cell whitespace-nowrap">
-                {sale.vendedorNome}
-              </td>
-
-              <td className="px-3 py-2.5 text-center">
-                <span
-                  className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
-                    sale.status === 'confirmada'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                  }`}
-                >
-                  {sale.status === 'confirmada' ? '✓ Confirmada' : '✗ Cancelada'}
+              {/* Status */}
+              <td className="px-3 py-3 text-center">
+                <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${sale.status === 'confirmada' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
+                  {sale.status === 'confirmada' ? 'Confirmada' : 'Cancelada'}
                 </span>
               </td>
 
-              {isAdmin && (
-                <td className="px-3 py-2.5 text-center">
-                  <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => onEdit(sale)}
-                      className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-1.5 rounded transition-all text-xs"
-                      title="Editar venda"
-                    >
-                      ✏️
-                    </button>
-                    {sale.status === 'confirmada' && (
-                      <button
-                        onClick={() => onCancel(sale.id, sale.clienteNome)}
-                        disabled={cancellingId === sale.id}
-                        className="text-amber-500 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 p-1.5 rounded transition-all disabled:opacity-30 text-xs"
-                        title="Cancelar venda"
-                      >
-                        {cancellingId === sale.id ? '⏳' : '⛔'}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => onDelete(sale.id, sale.clienteNome)}
-                      disabled={deletingId === sale.id || deletingAll}
-                      className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded transition-all disabled:opacity-30"
-                      title="Excluir venda"
-                    >
-                      {deletingId === sale.id ? <span className="animate-spin inline-block text-xs">⏳</span> : '🗑️'}
-                    </button>
-                  </div>
-                </td>
-              )}
+              {/* Ações */}
+              <td className="px-3 py-3 text-center">
+                <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Reenviar para agência */}
+                  {sale.agenciaId && sale.agenciaTelefone && (
+                    <button onClick={() => handleResendAgency(sale)} title="Reenviar relatório à agência"
+                      className="w-7 h-7 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 transition-colors flex items-center justify-center text-xs font-bold"
+                      aria-label="Reenviar agência">A</button>
+                  )}
+                  {/* Reenviar para cliente */}
+                  {sale.clienteTelefone && (
+                    <button onClick={() => handleResendGuest(sale)} title="Reenviar confirmação ao hóspede"
+                      className="w-7 h-7 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100 transition-colors flex items-center justify-center text-xs font-bold"
+                      aria-label="Reenviar hóspede">H</button>
+                  )}
+                  {isAdmin && (
+                    <>
+                      <button onClick={() => onEdit(sale)} title="Editar"
+                        className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 transition-colors flex items-center justify-center text-xs">✏</button>
+                      {sale.status === 'confirmada' && (
+                        <button onClick={() => onCancel(sale.id, sale.clienteNome)} disabled={cancellingId === sale.id} title="Cancelar"
+                          className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 transition-colors flex items-center justify-center text-xs disabled:opacity-30">⊘</button>
+                      )}
+                      <button onClick={() => onDelete(sale.id, sale.clienteNome)} disabled={deletingId === sale.id || deletingAll} title="Excluir"
+                        className="w-7 h-7 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 hover:bg-red-100 transition-colors flex items-center justify-center text-xs disabled:opacity-30">✕</button>
+                    </>
+                  )}
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>

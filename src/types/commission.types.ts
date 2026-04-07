@@ -5,12 +5,13 @@ export type TipoPreco = 'por_pessoa' | 'por_passeio';
 export interface Tour {
   id: string;
   nome: string;
+  descricao?: string;           // Texto resumo do passeio para envio ao cliente via WhatsApp
   precoBase: number;
-  comissaoPadrao: number; // Valor fixo em R$ (por pessoa ou por passeio, conforme tipoPreco)
+  comissaoPadrao: number;       // Valor fixo em R$
   unidade: string;
   tipo?: string;
-  tipoPreco: TipoPreco;       // Obrigatório agora
-  capacidadeMaxima?: number;  // Apenas para tipoPreco === 'por_passeio'
+  tipoPreco: TipoPreco;
+  capacidadeMaxima?: number;    // Apenas para 'por_passeio'
   agenciaId?: string | null;
   ativo: boolean;
   createdAt?: any;
@@ -24,7 +25,7 @@ export interface Agency {
   nome: string;
   telefone?: string;
   email?: string;
-  taxaComissaoPersonalizada?: number | null; // Percentual (%) aplicado sobre valorTotal
+  taxaComissaoPersonalizada?: number | null;
   createdAt?: any;
   createdBy?: string;
   updatedAt?: any;
@@ -34,7 +35,7 @@ export interface CustomCommission {
   id: string;
   passeioId: string;
   agenciaId?: string | null;
-  valor: number; // Valor fixo em R$ que substitui comissaoPadrao do tour
+  valor: number;
   dataInicio: any;
   dataFim: any | null;
   createdAt?: any;
@@ -54,10 +55,10 @@ export interface Sale {
   valorTotal: number;
   comissaoCalculada: number;
   status: 'confirmada' | 'cancelada';
-  quantidade: number;         // Quantidade de passeios/veículos
-  quantidadePessoas: number;  // Quantidade de pessoas (sempre presente)
-  tipoPreco: TipoPreco;       // Salvo na venda para histórico
-  precoUnitarioVendido: number; // Preço base no momento da venda
+  quantidade: number;
+  quantidadePessoas: number;
+  tipoPreco: TipoPreco;
+  precoUnitarioVendido: number;
   agenciaId?: string | null;
   agenciaNome?: string | null;
   observacoes?: string;

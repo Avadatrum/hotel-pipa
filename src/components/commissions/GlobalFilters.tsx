@@ -1,108 +1,73 @@
 // src/components/commissions/GlobalFilters.tsx
 
-interface GlobalFiltersProps {
+interface Props {
   filterVendedor: string;
   filterStatus: string;
   dateRange: { start: string; end: string };
-  onFilterVendedorChange: (value: string) => void;
-  onFilterStatusChange: (value: string) => void;
-  onDateRangeChange: (range: { start: string; end: string }) => void;
-  onClearFilters: () => void;
   uniqueVendors: string[];
   totalSalesCount: number;
   filteredSalesCount: number;
-  hasFilters: boolean;  // 👈 Isso é boolean (true/false)
+  hasFilters: boolean;
+  onFilterVendedorChange: (v: string) => void;
+  onFilterStatusChange: (v: string) => void;
+  onDateRangeChange: (r: { start: string; end: string }) => void;
+  onClearFilters: () => void;
 }
 
-export function GlobalFilters({
-  filterVendedor,
-  filterStatus,
-  dateRange,
-  onFilterVendedorChange,
-  onFilterStatusChange,
-  onDateRangeChange,
-  onClearFilters,
-  uniqueVendors,
-  totalSalesCount,
-  filteredSalesCount,
-  hasFilters,
-}: GlobalFiltersProps) {
-  
-  const handleVendedorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onFilterVendedorChange(e.target.value);
-  };
-  
-  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onFilterStatusChange(e.target.value);
-  };
-  
-  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onDateRangeChange({ ...dateRange, start: e.target.value });
-  };
-  
-  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onDateRangeChange({ ...dateRange, end: e.target.value });
-  };
-  
+export function GlobalFilters({ filterVendedor, filterStatus, dateRange, uniqueVendors, totalSalesCount, filteredSalesCount, hasFilters, onFilterVendedorChange, onFilterStatusChange, onDateRangeChange, onClearFilters }: Props) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-gray-800 dark:text-white text-sm">
-          🔍 Filtros
-        </h3>
+    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
+      <div className="flex flex-wrap gap-3 items-end">
+        {/* Vendedor */}
+        {uniqueVendors.length > 0 && (
+          <div className="flex-1 min-w-[140px]">
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Vendedor</label>
+            <select value={filterVendedor} onChange={e => onFilterVendedorChange(e.target.value)}
+              className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Todos</option>
+              {uniqueVendors.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+        )}
+
+        {/* Status */}
+        <div className="flex-1 min-w-[120px]">
+          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Status</label>
+          <select value={filterStatus} onChange={e => onFilterStatusChange(e.target.value)}
+            className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Todos</option>
+            <option value="confirmada">Confirmadas</option>
+            <option value="cancelada">Canceladas</option>
+          </select>
+        </div>
+
+        {/* Data início */}
+        <div className="flex-1 min-w-[130px]">
+          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">De</label>
+          <input type="date" value={dateRange.start} onChange={e => onDateRangeChange({ ...dateRange, start: e.target.value })}
+            className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+
+        {/* Data fim */}
+        <div className="flex-1 min-w-[130px]">
+          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Até</label>
+          <input type="date" value={dateRange.end} onChange={e => onDateRangeChange({ ...dateRange, end: e.target.value })}
+            className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+
+        {/* Limpar */}
         {hasFilters && (
-          <button 
-            onClick={onClearFilters} 
-            className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 font-medium"
-          >
-            Limpar ×
+          <button onClick={onClearFilters}
+            className="px-4 py-2 text-sm text-red-500 hover:text-red-700 border border-red-200 dark:border-red-800 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors whitespace-nowrap">
+            Limpar filtros
           </button>
         )}
       </div>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-        <select
-          value={filterVendedor}
-          onChange={handleVendedorChange}
-          className="border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Todos os vendedores</option>
-          {uniqueVendors.map(vendor => (
-            <option key={vendor} value={vendor}>{vendor}</option>
-          ))}
-        </select>
-        
-        <select
-          value={filterStatus}
-          onChange={handleStatusChange}
-          className="border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Todos os status</option>
-          <option value="confirmada">✅ Confirmada</option>
-          <option value="cancelada">❌ Cancelada</option>
-        </select>
-        
-        <input
-          type="date"
-          value={dateRange.start}
-          onChange={handleStartDateChange}
-          className="border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="De"
-        />
-        
-        <input
-          type="date"
-          value={dateRange.end}
-          onChange={handleEndDateChange}
-          className="border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Até"
-        />
-      </div>
-      
+
+      {/* Resultado */}
       {hasFilters && (
-        <p className="mt-2 text-xs text-gray-400">
-          Mostrando <strong className="text-gray-700 dark:text-gray-200">{filteredSalesCount}</strong> de{' '}
-          <strong className="text-gray-700 dark:text-gray-200">{totalSalesCount}</strong> vendas
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+          Exibindo <strong>{filteredSalesCount}</strong> de <strong>{totalSalesCount}</strong> vendas
         </p>
       )}
     </div>

@@ -4,221 +4,126 @@ import type { TipoPreco } from '../../types/commission.types';
 
 interface TourFormData {
   nome: string;
+  descricao: string;
   tipoPreco: TipoPreco;
   precoBase: number;
   comissaoPadrao: number;
   capacidadeMaxima?: number;
 }
 
-interface TourFormModalProps {
+interface Props {
   open: boolean;
   loading: boolean;
   onClose: () => void;
   onCreate: (data: TourFormData) => Promise<void>;
 }
 
-const TIPO_PRECO_OPTIONS: { value: TipoPreco; label: string; description: string }[] = [
-  {
-    value: 'por_pessoa',
-    label: 'Por pessoa',
-    description: 'Preço e comissão são multiplicados pela quantidade de pessoas.',
-  },
-  {
-    value: 'por_passeio',
-    label: 'Por veículo / saída',
-    description: 'Preço e comissão fixos por saída, independente do número de pessoas.',
-  },
-];
+const EMPTY: TourFormData = { nome: '', descricao: '', tipoPreco: 'por_pessoa', precoBase: 0, comissaoPadrao: 0 };
 
-const EMPTY_FORM: TourFormData = {
-  nome: '',
-  tipoPreco: 'por_pessoa',
-  precoBase: 0,
-  comissaoPadrao: 0,
-  capacidadeMaxima: undefined,
-};
-
-export function TourFormModal({ open, loading, onClose, onCreate }: TourFormModalProps) {
-  const [form, setForm] = useState<TourFormData>(EMPTY_FORM);
-
+export function TourFormModal({ open, loading, onClose, onCreate }: Props) {
+  const [form, setForm] = useState<TourFormData>(EMPTY);
   if (!open) return null;
 
-  const set = (patch: Partial<TourFormData>) => setForm(f => ({ ...f, ...patch }));
+  const set = (p: Partial<TourFormData>) => setForm(f => ({ ...f, ...p }));
+  const isPorPasseio = form.tipoPreco === 'por_passeio';
 
   const handleSubmit = async () => {
     if (!form.nome.trim()) return;
     await onCreate(form);
-    setForm(EMPTY_FORM);
+    setForm(EMPTY);
   };
 
-  const isPorPasseio = form.tipoPreco === 'por_passeio';
-  const precoLabel = isPorPasseio ? 'Preço por veículo / saída' : 'Preço por pessoa';
-  const comissaoLabel = isPorPasseio ? 'Comissão por veículo / saída' : 'Comissão por pessoa';
-
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={e => e.target === e.currentTarget && onClose()}
-    >
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
-        <div className="flex justify-between items-center mb-5">
-          <h3 className="text-lg font-bold text-gray-800 dark:text-white">
-            Novo passeio / transfer
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-          >
-            ✕
-          </button>
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg shadow-2xl max-h-[95vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-5 py-4 flex items-center justify-between">
+          <h3 className="font-semibold text-gray-900 dark:text-white">Novo passeio / transfer</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">✕</button>
         </div>
 
-        <div className="space-y-4">
+        <div className="p-5 space-y-4">
           {/* Nome */}
           <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-              Nome
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Nome</label>
+            <input type="text" value={form.nome} onChange={e => set({ nome: e.target.value })}
+              placeholder="Ex: Transfer Aeroporto, Quadriciclo Baia dos Golfinhos"
+              className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" autoFocus />
+          </div>
+
+          {/* Descrição */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+              Descrição para o cliente
             </label>
-            <input
-              type="text"
-              placeholder="Ex: Quadriciclo Baia dos Golfinhos, Transfer Aeroporto"
-              value={form.nome}
-              onChange={e => set({ nome: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
-            />
+            <textarea value={form.descricao} onChange={e => set({ descricao: e.target.value })} rows={3}
+              placeholder="Descreva o passeio para enviar ao cliente via WhatsApp. Ex: Explore as belas dunas de Natal em um quadriciclo, com paradas nas piscinas naturais..."
+              className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+            <p className="text-xs text-gray-400 mt-1">Será usada ao enviar o resumo do passeio por WhatsApp.</p>
           </div>
 
           {/* Tipo de cobrança */}
           <div>
-            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-              Tipo de cobrança
-            </label>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Tipo de cobrança</label>
             <div className="grid grid-cols-2 gap-2">
-              {TIPO_PRECO_OPTIONS.map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => set({ tipoPreco: opt.value, capacidadeMaxima: undefined })}
-                  className={`text-left p-3 rounded-lg border-2 transition-colors ${
-                    form.tipoPreco === opt.value
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="text-sm font-medium text-gray-800 dark:text-white">
-                    {opt.label}
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    {opt.description}
-                  </div>
+              {([
+                { value: 'por_pessoa', label: 'Por pessoa', desc: 'Preço x nº de pessoas' },
+                { value: 'por_passeio', label: 'Por veículo / saída', desc: 'Preço fixo por saída' },
+              ] as const).map(opt => (
+                <button key={opt.value} type="button" onClick={() => set({ tipoPreco: opt.value, capacidadeMaxima: undefined })}
+                  className={`text-left p-3 rounded-xl border-2 transition-colors ${form.tipoPreco === opt.value ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'}`}>
+                  <div className="text-sm font-medium text-gray-800 dark:text-white">{opt.label}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">{opt.desc}</div>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Capacidade máxima (apenas por_passeio) */}
+          {/* Capacidade (só por_passeio) */}
           {isPorPasseio && (
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-                Capacidade máxima de pessoas
-              </label>
-              <input
-                type="number"
-                min="1"
-                placeholder="Ex: 4"
-                value={form.capacidadeMaxima ?? ''}
-                onChange={e =>
-                  set({ capacidadeMaxima: e.target.value ? parseInt(e.target.value) : undefined })
-                }
-                className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Quantas pessoas cabem neste veículo ou saída. Deixe em branco se não houver limite.
-              </p>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Capacidade máxima</label>
+              <input type="number" min="1" placeholder="Ex: 4"
+                value={form.capacidadeMaxima ?? ''} onChange={e => set({ capacidadeMaxima: e.target.value ? parseInt(e.target.value) : undefined })}
+                className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <p className="text-xs text-gray-400 mt-1">Quantas pessoas cabem por veículo / saída.</p>
             </div>
           )}
 
-          {/* Preço e comissão */}
+          {/* Preço e Comissão */}
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-                {precoLabel}
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-                  R$
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0,00"
-                  value={form.precoBase || ''}
-                  onChange={e => set({ precoBase: parseFloat(e.target.value) || 0 })}
-                  className="w-full border rounded-lg pl-9 pr-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+            {[
+              { label: isPorPasseio ? 'Preço por saída' : 'Preço por pessoa', key: 'precoBase' as const },
+              { label: isPorPasseio ? 'Comissão por saída' : 'Comissão por pessoa', key: 'comissaoPadrao' as const },
+            ].map(field => (
+              <div key={field.key}>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">{field.label}</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
+                  <input type="number" min="0" step="0.01" placeholder="0,00"
+                    value={form[field.key] || ''}
+                    onChange={e => set({ [field.key]: parseFloat(e.target.value) || 0 })}
+                    className="w-full border border-gray-200 dark:border-gray-700 rounded-xl pl-9 pr-3 py-2.5 text-sm dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-                {comissaoLabel}
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-                  R$
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0,00"
-                  value={form.comissaoPadrao || ''}
-                  onChange={e => set({ comissaoPadrao: parseFloat(e.target.value) || 0 })}
-                  className="w-full border rounded-lg pl-9 pr-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* Preview do cálculo */}
+          {/* Preview */}
           {form.precoBase > 0 && (
-            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
-              {isPorPasseio ? (
-                <>
-                  Preço fixo de <strong>R$ {form.precoBase.toFixed(2)}</strong> por saída
-                  {form.capacidadeMaxima ? ` (até ${form.capacidadeMaxima} pessoas)` : ''}.
-                  {form.comissaoPadrao > 0 && (
-                    <> Comissão de <strong>R$ {form.comissaoPadrao.toFixed(2)}</strong> por saída.</>
-                  )}
-                </>
-              ) : (
-                <>
-                  Preço de <strong>R$ {form.precoBase.toFixed(2)}</strong> por pessoa.
-                  {form.comissaoPadrao > 0 && (
-                    <>
-                      {' '}Comissão de <strong>R$ {form.comissaoPadrao.toFixed(2)}</strong> por pessoa.
-                      {' '}Para 2 pessoas: <strong>R$ {(form.comissaoPadrao * 2).toFixed(2)}</strong>.
-                    </>
-                  )}
-                </>
-              )}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+              {isPorPasseio
+                ? <>Preço fixo de <strong>R$ {form.precoBase.toFixed(2)}</strong> por saída{form.capacidadeMaxima ? ` (até ${form.capacidadeMaxima} pessoas)` : ''}. {form.comissaoPadrao > 0 && <>Comissão de <strong>R$ {form.comissaoPadrao.toFixed(2)}</strong> por saída.</>}</>
+                : <>Preço de <strong>R$ {form.precoBase.toFixed(2)}</strong> por pessoa. {form.comissaoPadrao > 0 && <>Comissão de <strong>R$ {form.comissaoPadrao.toFixed(2)}</strong>/pessoa. Para 2: <strong>R$ {(form.comissaoPadrao * 2).toFixed(2)}</strong>.</>}</>
+              }
             </div>
           )}
         </div>
 
-        <div className="flex gap-3 justify-end mt-5">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 border rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading || !form.nome.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-blue-700 transition-colors"
-          >
+        <div className="px-5 pb-5 flex gap-3 justify-end">
+          <button onClick={onClose} className="px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancelar</button>
+          <button onClick={handleSubmit} disabled={loading || !form.nome.trim()}
+            className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium disabled:opacity-50 hover:bg-blue-700 transition-colors">
             {loading ? 'Criando...' : 'Criar'}
           </button>
         </div>

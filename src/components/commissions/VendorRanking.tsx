@@ -1,76 +1,43 @@
 // src/components/commissions/VendorRanking.tsx
 import { formatCurrency } from '../../utils/commissionCalculations';
 
-interface VendorData {
-  total: number;
-  count: number;
-  comissao: number;
-}
+interface VendorData { total: number; count: number; comissao: number; }
+const MEDALS = ['bg-yellow-400 text-yellow-900', 'bg-gray-300 text-gray-700', 'bg-amber-600 text-amber-100'];
 
-interface VendorRankingProps {
-  salesByVendor: Record<string, VendorData>;
-}
-
-const POSITION_STYLES = [
-  'bg-yellow-400 text-yellow-900',
-  'bg-gray-300 text-gray-800',
-  'bg-amber-600 text-amber-100',
-];
-
-export function VendorRanking({ salesByVendor }: VendorRankingProps) {
-  if (Object.keys(salesByVendor).length === 0) return null;
-
+export function VendorRanking({ salesByVendor }: { salesByVendor: Record<string, VendorData> }) {
   const ranking = Object.entries(salesByVendor)
     .sort((a, b) => b[1].comissao - a[1].comissao)
-    .map(([vendor, data], index) => ({ vendor, data, position: index + 1 }));
+    .map(([vendor, data], i) => ({ vendor, data, pos: i + 1 }));
+
+  if (ranking.length === 0) return null;
+
+  const maxComissao = Math.max(...ranking.map(r => r.data.comissao), 1);
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4">
-      <h3 className="font-semibold mb-3 text-gray-800 dark:text-white text-sm">
-        Ranking de vendedores
-      </h3>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50 dark:bg-gray-700 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              <th className="px-3 py-2 text-left rounded-l-lg">#</th>
-              <th className="px-3 py-2 text-left">Vendedor</th>
-              <th className="px-3 py-2 text-right">Vendas</th>
-              <th className="px-3 py-2 text-right">Volume</th>
-              <th className="px-3 py-2 text-right rounded-r-lg">Comissão</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-            {ranking.map(item => (
-              <tr
-                key={item.vendor}
-                className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-              >
-                <td className="px-3 py-2">
-                  <span
-                    className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
-                      POSITION_STYLES[item.position - 1] ?? 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-                    }`}
-                  >
-                    {item.position}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-sm font-medium text-gray-800 dark:text-white">
-                  {item.vendor}
-                </td>
-                <td className="px-3 py-2 text-sm text-right text-gray-600 dark:text-gray-300">
-                  {item.data.count}
-                </td>
-                <td className="px-3 py-2 text-sm text-right text-gray-600 dark:text-gray-300">
-                  {formatCurrency(item.data.total)}
-                </td>
-                <td className="px-3 py-2 text-sm text-right font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(item.data.comissao)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
+      <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-4">Ranking por comissão</h3>
+      <div className="space-y-3">
+        {ranking.map(item => (
+          <div key={item.vendor}>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 ${MEDALS[item.pos - 1] ?? 'bg-gray-100 text-gray-500 dark:bg-gray-800'}`}>
+                  {item.pos}
+                </span>
+                <span className="text-sm font-medium text-gray-800 dark:text-white truncate max-w-[120px]">{item.vendor}</span>
+                <span className="text-xs text-gray-400 hidden sm:inline">{item.data.count} venda{item.data.count !== 1 ? 's' : ''}</span>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-bold text-green-600 dark:text-green-400">{formatCurrency(item.data.comissao)}</div>
+                <div className="text-xs text-gray-400">{formatCurrency(item.data.total)} em vendas</div>
+              </div>
+            </div>
+            <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 overflow-hidden">
+              <div className="h-1.5 rounded-full bg-green-500 transition-all duration-700"
+                style={{ width: `${(item.data.comissao / maxComissao) * 100}%` }} />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -24,6 +24,7 @@ hotel-pipa
 ├─ README.md
 ├─ scripts
 │  └─ seedTours.ts
+├─ settings.json
 ├─ src
 │  ├─ assets
 │  │  ├─ hero.png

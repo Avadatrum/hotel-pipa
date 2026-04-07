@@ -15,7 +15,7 @@ import { TabuaDeMarePage } from '../pages/TabuaDeMarePage';
 import { CommissionsPage } from '../pages/commissions/CommissionsPage';
 import { RegisterSalePage } from '../pages/commissions/RegisterSalePage';
 import { CommissionDashboard } from '../pages/commissions/CommissionDashboard';
-import { MyCommissions } from '../components/commissions/MyCommissions';
+import { MyCommissions } from '../pages/commissions/MyCommissions';
 import { AgencyManager } from '../components/commissions/AgencyManager';
 import { CommissionSettings } from '../pages/commissions/CommissionSettings';
 import { CommissionCharts } from '../components/commissions/CommissionCharts';
