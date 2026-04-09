@@ -63,7 +63,7 @@ export const communicationTourService = {
 *Participantes:* ${descricaoQuantidade(sale)}
 *Valor:* ${descricaoPreco(sale)}
 *Comissão:* ${formatCurrency(sale.comissaoCalculada)}
-${sale.observacoes ? `\n*Obs:* ${sale.observacoes}` : ''}
+ ${sale.observacoes ? `\n*Obs:* ${sale.observacoes}` : ''}
 ---
 Hotel Pipa — ${new Date().toLocaleString('pt-BR')}`.trim();
   },
@@ -90,15 +90,14 @@ Dúvidas? Entre em contato.
   },
 
   /** Texto de divulgação do passeio (descricao cadastrada no tour). */
-  generateTourPromo(tour: Tour, customPhone?: string): string {
-    const preco = tour.tipoPreco === 'por_passeio'
-      ? `${formatCurrency(tour.precoBase)} por veículo${tour.capacidadeMaxima ? ` (até ${tour.capacidadeMaxima} pessoas)` : ''}`
-      : `${formatCurrency(tour.precoBase)} por pessoa`;
+  generateTourPromo(tour: Tour): string {
     return `*${tour.nome}*
 
-${tour.descricao || 'Passeio disponível no Hotel Pipa.'}
+ ${tour.descricao || 'Passeio disponível no Hotel Pipa.'}
 
-*Valor:* ${preco}
+*Valor:* ${tour.tipoPreco === 'por_passeio'
+      ? `${formatCurrency(tour.precoBase)} por veículo${tour.capacidadeMaxima ? ` (até ${tour.capacidadeMaxima} pessoas)` : ''}`
+      : `${formatCurrency(tour.precoBase)} por pessoa`}
 
 Para reservas, entre em contato com a recepção do Hotel Pipa.`.trim();
   },

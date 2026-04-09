@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import type { Tour } from '../../types/commission.types';
 import { communicationTourService } from '../../services/communicationTourService';
-import { formatCurrency } from '../../utils/commissionCalculations';
 
 interface Props {
   tour: Tour | null;
@@ -16,9 +15,7 @@ export function SendTourPromoModal({ tour, onClose }: Props) {
 
   if (!tour) return null;
 
-  const preco = tour.tipoPreco === 'por_passeio'
-    ? `${formatCurrency(tour.precoBase)} por veículo${tour.capacidadeMaxima ? ` (até ${tour.capacidadeMaxima} pessoas)` : ''}`
-    : `${formatCurrency(tour.precoBase)} por pessoa`;
+  // CORREÇÃO: Variável 'preco' removida pois não estava sendo usada.
 
   const previewMsg = communicationTourService.generateTourPromo(tour);
 

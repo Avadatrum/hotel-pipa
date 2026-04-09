@@ -10,7 +10,7 @@ interface Props {
   totalResults: number;
 }
 
-export function TableFilters({ filters, onFiltersChange, onClearFilters, hasFilters, totalResults }: Props) {
+export function TableFilters({ filters, onFiltersChange, onClearFilters, hasFilters, }: Props) {
   const set = (patch: Partial<Filters>) => onFiltersChange({ ...filters, ...patch });
 
   return (
