@@ -1,5 +1,4 @@
 // src/components/TabuaMare/SendTideModal.tsx
-
 import { useState, useEffect } from 'react';
 import { useApartments } from '../../hooks/useApartments';
 import { buscarTabuaMare } from '../../services/tabuaMareService';
@@ -9,7 +8,6 @@ import { formatTideMessage, formatMultipleDaysMessage } from '../../utils/tideMe
 interface HoraMare { hour: string; level: number; }
 interface DiaData { day: number; weekday_name: string; hours: HoraMare[]; }
 
-// Interface para a resposta da API
 interface TideApiResponse {
   data?: Array<{
     id: string;
@@ -47,13 +45,10 @@ interface ApartmentWithPhone {
 
 type SendType = 'single' | 'multiple';
 type DateType = 'today' | 'specific';
+type Step = 1 | 2 | 3;
 
 function cleanPhoneNumber(phone: string): string {
-  let cleaned = phone.replace(/\D/g, '');
-  if (!cleaned.startsWith('55') && cleaned.length <= 11) {
-    cleaned = '55' + cleaned;
-  }
-  return cleaned;
+  return phone.replace(/\D/g, '');
 }
 
 export function SendTideModal({
@@ -71,8 +66,8 @@ export function SendTideModal({
   const [sending, setSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [language, setLanguage] = useState<Language>('pt');
-  
-  // Novos estados
+
+  const [step, setStep] = useState<Step>(1);
   const [sendType, setSendType] = useState<SendType>('single');
   const [dateType, setDateType] = useState<DateType>('today');
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDate());
@@ -82,10 +77,12 @@ export function SendTideModal({
   const [multipleDaysData, setMultipleDaysData] = useState<DiaData[]>([]);
   const [loadingCustomData, setLoadingCustomData] = useState(false);
   const [meanLevelCache, setMeanLevelCache] = useState<number>(meanLevel);
+  const [previewMessage, setPreviewMessage] = useState<string>('');
 
   // Reset states quando modal abre/fecha
   useEffect(() => {
     if (!isOpen) {
+      setStep(1);
       setSendType('single');
       setDateType('today');
       setCustomTideData(null);
@@ -93,8 +90,8 @@ export function SendTideModal({
       setSelectedApt(null);
       setLanguage('pt');
       setSearchTerm('');
+      setPreviewMessage('');
     } else {
-      // Atualiza o meanLevel quando o modal abre
       setMeanLevelCache(meanLevel);
     }
   }, [isOpen, meanLevel]);
@@ -106,21 +103,17 @@ export function SendTideModal({
       setMeanLevelCache(meanLevel);
       return;
     }
-
     setLoadingCustomData(true);
     try {
       const response = await buscarTabuaMare(portoId, selectedMonth, String(selectedDay));
-      // Cast explícito para TideApiResponse
       const result = response as TideApiResponse;
       const porto = result?.data?.[0];
-      
+
       if (porto) {
         const meanLvl = porto.mean_level ?? meanLevel;
         setMeanLevelCache(meanLvl);
-        
         const mesObj = porto.months?.find((m: any) => m.month === selectedMonth);
         const diaObj = mesObj?.days?.find((d: any) => d.day === selectedDay);
-        
         if (diaObj?.hours && diaObj.hours.length > 0) {
           setCustomTideData({
             day: selectedDay,
@@ -152,28 +145,25 @@ export function SendTideModal({
       const promises: Promise<void>[] = [];
       const daysData: DiaData[] = [];
       let lastMeanLevel = meanLevelCache;
-      
+
       for (let i = 0; i < 3; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
         const year = date.getFullYear();
         const month = date.getMonth() + 1;
         const day = date.getDate();
-        
+
         const promise = buscarTabuaMare(portoId, month, String(day))
           .then((response) => {
-            // Cast explícito para TideApiResponse
             const result = response as TideApiResponse;
             const porto = result?.data?.[0];
             if (porto) {
               if (porto.mean_level) lastMeanLevel = porto.mean_level;
-              
               const mesObj = porto.months?.find((m: any) => m.month === month);
               const diaObj = mesObj?.days?.find((d: any) => d.day === day);
-              
               if (diaObj?.hours && diaObj.hours.length > 0) {
                 daysData.push({
-                  day: day,
+                  day,
                   weekday_name: diaObj.weekday_name || getWeekdayName(year, month, day),
                   hours: diaObj.hours
                 });
@@ -183,12 +173,12 @@ export function SendTideModal({
           .catch((err: Error) => {
             console.error(`Erro ao buscar dia ${day}/${month}:`, err);
           });
-        
+
         promises.push(promise);
       }
-      
+
       await Promise.all(promises);
-      
+
       if (daysData.length === 0) {
         alert('Não foi possível obter dados dos próximos dias');
         setMultipleDaysData([]);
@@ -205,17 +195,14 @@ export function SendTideModal({
     }
   };
 
-  // Função auxiliar para obter nome do dia da semana
   const getWeekdayName = (year: number, month: number, day: number): string => {
     const date = new Date(year, month - 1, day);
     const weekdays = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
     return weekdays[date.getDay()];
   };
 
-  // Efeito para buscar dados quando o tipo ou data mudar
   useEffect(() => {
     if (!isOpen || !portoId) return;
-    
     if (sendType === 'single') {
       fetchSpecificDay();
     } else {
@@ -235,76 +222,69 @@ export function SendTideModal({
   const filteredApartments = apartmentsWithPhone.filter(apt => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
-    return apt.number.toString().includes(term) || 
-           apt.guest.toLowerCase().includes(term);
+    return apt.number.toString().includes(term) || apt.guest.toLowerCase().includes(term);
   });
 
+  // Gera a prévia da mensagem ao avançar para o passo 3
+  const buildPreviewMessage = (): string => {
+    if (!selectedApt) return '';
+    if (sendType === 'single' && customTideData) {
+      const options: TideMessageOptions = {
+        guestName: selectedApt.guest,
+        aptNumber: selectedApt.number,
+        diaData: customTideData,
+        mes: dateType === 'today' ? mes : selectedMonth,
+        ano: dateType === 'today' ? ano : selectedYear,
+        portoNome,
+        portoId,
+        meanLevel: meanLevelCache,
+        language
+      };
+      return formatTideMessage(options);
+    }
+    if (sendType === 'multiple' && multipleDaysData.length > 0) {
+      const options: TideMessageMultipleOptions = {
+        guestName: selectedApt.guest,
+        aptNumber: selectedApt.number,
+        tideDataList: multipleDaysData,
+        startDate: { mes: new Date().getMonth() + 1, ano: new Date().getFullYear() },
+        portoNome,
+        portoId,
+        meanLevel: meanLevelCache,
+        language
+      };
+      return formatMultipleDaysMessage(options);
+    }
+    return '';
+  };
+
+  const handleNext = () => {
+    if (step === 1) {
+      setStep(2);
+    } else if (step === 2 && selectedApt) {
+      const msg = buildPreviewMessage();
+      setPreviewMessage(msg);
+      setStep(3);
+    }
+  };
+
+  const handleBack = () => {
+    if (step === 3) setStep(2);
+    else if (step === 2) setStep(1);
+  };
+
   const handleSend = async () => {
-    if (!selectedApt) return;
-    
-    if (sendType === 'single' && !customTideData) {
-      alert('Dados da maré não disponíveis');
-      return;
-    }
-    
-    if (sendType === 'multiple' && multipleDaysData.length === 0) {
-      alert('Dados dos próximos dias não disponíveis');
-      return;
-    }
-    
+    if (!selectedApt || !previewMessage) return;
     setSending(true);
-    
     try {
-      let message: string;
-      
-      if (sendType === 'single' && customTideData) {
-        // Envio de dia único
-        const singleOptions: TideMessageOptions = {
-          guestName: selectedApt.guest,
-          aptNumber: selectedApt.number,
-          diaData: customTideData,
-          mes: dateType === 'today' ? mes : selectedMonth,
-          ano: dateType === 'today' ? ano : selectedYear,
-          portoNome,
-          portoId,
-          meanLevel: meanLevelCache,
-          language
-        };
-        message = formatTideMessage(singleOptions);
-      } else if (sendType === 'multiple' && multipleDaysData.length > 0) {
-        // Envio de múltiplos dias
-        const multipleOptions: TideMessageMultipleOptions = {
-          guestName: selectedApt.guest,
-          aptNumber: selectedApt.number,
-          tideDataList: multipleDaysData,
-          startDate: { mes: new Date().getMonth() + 1, ano: new Date().getFullYear() },
-          portoNome,
-          portoId,
-          meanLevel: meanLevelCache,
-          language
-        };
-        message = formatMultipleDaysMessage(multipleOptions);
-      } else {
-        throw new Error('Nenhum dado de maré disponível');
-      }
-      
       const cleanPhone = cleanPhoneNumber(selectedApt.phone);
-      const encodedMessage = encodeURIComponent(message);
+      const encodedMessage = encodeURIComponent(previewMessage);
       const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
-      
       window.open(whatsappUrl, '_blank');
-      
       setTimeout(() => {
         onClose();
-        setSelectedApt(null);
-        setLanguage('pt');
-        setSendType('single');
-        setDateType('today');
-        setCustomTideData(null);
-        setMultipleDaysData([]);
         setSending(false);
       }, 500);
-      
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
       setSending(false);
@@ -314,305 +294,317 @@ export function SendTideModal({
 
   const formatPhoneDisplay = (phone: string) => {
     const cleaned = phone.replace(/\D/g, '');
-    if (cleaned.length === 11) {
-      return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
-    }
-    if (cleaned.length === 10) {
-      return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
-    }
+    if (cleaned.length === 11) return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
+    if (cleaned.length === 10) return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
     return phone;
   };
 
-  const languageLabels = {
-    pt: '🇧🇷 Português',
-    es: '🇪🇸 Español',
-    en: '🇺🇸 English'
-  };
+  const canAdvanceFromStep1 = !loadingCustomData && (
+    sendType === 'multiple' ? multipleDaysData.length > 0 : !!customTideData
+  );
 
-  const getDisplayData = () => {
-    if (sendType === 'single') {
-      if (dateType === 'today') {
-        const today = new Date();
-        return `Hoje (${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()})`;
-      } else {
-        return `${selectedDay}/${selectedMonth}/${selectedYear}`;
-      }
-    } else {
-      return `Próximos 3 dias (a partir de hoje)`;
-    }
+  const canAdvanceFromStep2 = !!selectedApt;
+
+  const languageLabels: Record<Language, string> = {
+    pt: '🇧🇷 PT',
+    es: '🇪🇸 ES',
+    en: '🇺🇸 EN'
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col animate-slide-up">
-        
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-white">
-            🌊 Enviar Tábua de Maré
-          </h2>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md flex flex-col animate-slide-up overflow-hidden border border-gray-100 dark:border-gray-800">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-cyan-50 dark:bg-cyan-900/30 flex items-center justify-center">
+              <svg className="w-4 h-4 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-800 dark:text-white leading-none">Enviar tábua de maré</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{portoNome} — {portoId.toUpperCase()}</p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300 transition-colors text-sm"
           >
             ✕
           </button>
         </div>
-        
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          
-          {/* Tipo de envio */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              📌 Tipo de envio
-            </label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSendType('single')}
-                className={`flex-1 py-2 rounded-lg border transition-colors ${
-                  sendType === 'single'
-                    ? 'bg-cyan-600 text-white border-cyan-600'
-                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                📅 Dia específico
-              </button>
-              <button
-                onClick={() => setSendType('multiple')}
-                className={`flex-1 py-2 rounded-lg border transition-colors ${
-                  sendType === 'multiple'
-                    ? 'bg-cyan-600 text-white border-cyan-600'
-                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                📆 Próximos 3 dias
-              </button>
-            </div>
-          </div>
 
-          {/* Configurações para dia específico */}
-          {sendType === 'single' && (
+        {/* Step indicator */}
+        <div className="flex gap-1 px-5 pt-4">
+          {([1, 2, 3] as Step[]).map((s) => (
+            <div
+              key={s}
+              className={`flex-1 h-0.5 rounded-full transition-colors duration-300 ${
+                s <= step ? 'bg-cyan-500' : 'bg-gray-200 dark:bg-gray-700'
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 max-h-[60vh]">
+
+          {/* Step 1 — Configuração */}
+          {step === 1 && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  📅 Selecionar data
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setDateType('today')}
-                    className={`flex-1 py-2 rounded-lg border transition-colors ${
-                      dateType === 'today'
-                        ? 'bg-cyan-600 text-white border-cyan-600'
-                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600'
-                    }`}
-                  >
-                    Hoje
-                  </button>
-                  <button
-                    onClick={() => setDateType('specific')}
-                    className={`flex-1 py-2 rounded-lg border transition-colors ${
-                      dateType === 'specific'
-                        ? 'bg-cyan-600 text-white border-cyan-600'
-                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600'
-                    }`}
-                  >
-                    Data específica
-                  </button>
+                <p className="text-[11px] uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Período</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['single', 'multiple'] as SendType[]).map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setSendType(type)}
+                      className={`py-2.5 px-3 rounded-xl border text-left transition-all ${
+                        sendType === type
+                          ? 'border-cyan-400 bg-cyan-50 dark:bg-cyan-900/20'
+                          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                      }`}
+                    >
+                      <p className={`text-sm font-medium ${sendType === type ? 'text-cyan-700 dark:text-cyan-300' : 'text-gray-700 dark:text-gray-200'}`}>
+                        {type === 'single' ? 'Dia específico' : 'Próximos 3 dias'}
+                      </p>
+                      <p className={`text-[11px] mt-0.5 ${sendType === type ? 'text-cyan-500 dark:text-cyan-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                        {type === 'single' ? 'hoje ou outra data' : 'a partir de hoje'}
+                      </p>
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {dateType === 'specific' && (
-                <div className="grid grid-cols-3 gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                  <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Dia</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      value={selectedDay}
-                      onChange={(e) => setSelectedDay(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))}
-                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 text-sm bg-white dark:bg-gray-700"
-                    />
+              {sendType === 'single' && (
+                <div>
+                  <p className="text-[11px] uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Data</p>
+                  <div className="flex gap-2 mb-3">
+                    {(['today', 'specific'] as DateType[]).map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setDateType(type)}
+                        className={`flex-1 py-2 rounded-xl border text-sm transition-all ${
+                          dateType === type
+                            ? 'border-cyan-400 bg-cyan-50 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-300'
+                            : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        }`}
+                      >
+                        {type === 'today' ? 'Hoje' : 'Outra data'}
+                      </button>
+                    ))}
                   </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Mês</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="12"
-                      value={selectedMonth}
-                      onChange={(e) => setSelectedMonth(Math.min(12, Math.max(1, parseInt(e.target.value) || 1)))}
-                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 text-sm bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Ano</label>
-                    <input
-                      type="number"
-                      min="2020"
-                      max="2030"
-                      value={selectedYear}
-                      onChange={(e) => setSelectedYear(Math.min(2030, Math.max(2020, parseInt(e.target.value) || 2024)))}
-                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 text-sm bg-white dark:bg-gray-700"
-                    />
-                  </div>
+
+                  {dateType === 'specific' && (
+                    <div className="grid grid-cols-3 gap-2 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                      {[
+                        { label: 'Dia', value: selectedDay, min: 1, max: 31, onChange: (v: number) => setSelectedDay(v) },
+                        { label: 'Mês', value: selectedMonth, min: 1, max: 12, onChange: (v: number) => setSelectedMonth(v) },
+                        { label: 'Ano', value: selectedYear, min: 2020, max: 2030, onChange: (v: number) => setSelectedYear(v) },
+                      ].map(({ label, value, min, max, onChange }) => (
+                        <div key={label}>
+                          <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-1">{label}</p>
+                          <input
+                            type="number"
+                            min={min}
+                            max={max}
+                            value={value}
+                            onChange={(e) => onChange(Math.min(max, Math.max(min, parseInt(e.target.value) || min)))}
+                            className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <p className="text-[11px] uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Idioma</p>
+                <div className="flex gap-2">
+                  {(['pt', 'es', 'en'] as Language[]).map((lang) => (
+                    <button
+                      key={lang}
+                      onClick={() => setLanguage(lang)}
+                      className={`flex-1 py-2 rounded-xl border text-sm transition-all ${
+                        language === lang
+                          ? 'border-cyan-400 bg-cyan-50 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-300'
+                          : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                      }`}
+                    >
+                      {languageLabels[lang]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Status da maré */}
+              {loadingCustomData ? (
+                <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                  <div className="w-4 h-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Carregando dados da maré...</p>
+                </div>
+              ) : (
+                <div className={`p-3 rounded-xl border text-sm ${
+                  canAdvanceFromStep1
+                    ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800'
+                    : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
+                }`}>
+                  <p className={`font-medium ${canAdvanceFromStep1 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {canAdvanceFromStep1 ? '✓ Dados carregados' : '✗ Dados indisponíveis'}
+                  </p>
+                  <p className="text-xs mt-0.5 text-gray-400 dark:text-gray-500">
+                    {sendType === 'multiple'
+                      ? `${multipleDaysData.length} dia(s) disponível(is) para envio`
+                      : customTideData
+                        ? `${customTideData.weekday_name}, ${customTideData.day}/${dateType === 'today' ? mes : selectedMonth}`
+                        : 'Nenhum dado encontrado para a data selecionada'
+                    }
+                  </p>
                 </div>
               )}
             </>
           )}
 
-          {/* Info da maré selecionada */}
-          {!loadingCustomData && (
-            <div className="bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 rounded-lg p-3 border border-cyan-200 dark:border-cyan-800">
-              <p className="text-sm font-medium text-cyan-800 dark:text-cyan-200">
-                {sendType === 'single' ? '📅 Data selecionada:' : '📆 Período selecionado:'}
+          {/* Step 2 — Seleção do hóspede */}
+          {step === 2 && (
+            <>
+              <div>
+                <p className="text-[11px] uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Hóspede</p>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar por nome ou número do apto..."
+                  className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 mb-3"
+                />
+
+                {loadingApartments ? (
+                  <div className="flex justify-center py-8">
+                    <div className="w-5 h-5 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : filteredApartments.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
+                    {apartmentsWithPhone.length === 0
+                      ? 'Nenhum apartamento ocupado com telefone cadastrado'
+                      : `Nenhum resultado para "${searchTerm}"`
+                    }
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-0.5">
+                    {filteredApartments.map((apt) => (
+                      <button
+                        key={apt.number}
+                        onClick={() => setSelectedApt(apt)}
+                        className={`w-full text-left px-3 py-2.5 rounded-xl border transition-all ${
+                          selectedApt?.number === apt.number
+                            ? 'border-cyan-400 bg-cyan-50 dark:bg-cyan-900/20'
+                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className={`text-sm font-medium ${selectedApt?.number === apt.number ? 'text-cyan-700 dark:text-cyan-300' : 'text-gray-800 dark:text-white'}`}>
+                              Apto {apt.number} — {apt.block}
+                            </p>
+                            <p className={`text-xs mt-0.5 ${selectedApt?.number === apt.number ? 'text-cyan-500 dark:text-cyan-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                              {apt.guest}
+                            </p>
+                          </div>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 font-mono">
+                            {formatPhoneDisplay(apt.phone)}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Step 3 — Prévia da mensagem */}
+          {step === 3 && (
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Prévia da mensagem</p>
+              <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4 text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap font-mono leading-relaxed max-h-72 overflow-y-auto">
+                {previewMessage}
+              </div>
+              <div className="flex items-center gap-2 mt-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 text-xs font-medium text-gray-500 dark:text-gray-300">
+                  {selectedApt?.guest.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800 dark:text-white">{selectedApt?.guest}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 font-mono">{selectedApt ? formatPhoneDisplay(selectedApt.phone) : ''}</p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                A mensagem será aberta no WhatsApp para confirmar o envio.
               </p>
-              <p className="text-xs text-cyan-600 dark:text-cyan-300 mt-1 font-mono">
-                {getDisplayData()}
-              </p>
-              <p className="text-xs text-cyan-600 dark:text-cyan-300 mt-1">
-                📍 {portoNome} ({portoId.toUpperCase()})
-              </p>
-              {sendType === 'multiple' && multipleDaysData.length > 0 && (
-                <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                  ✅ {multipleDaysData.length} dias disponíveis para envio
-                </p>
-              )}
-              {sendType === 'single' && customTideData && (
-                <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                  ✅ Dados carregados com sucesso
-                </p>
-              )}
             </div>
           )}
 
-          {loadingCustomData && (
-            <div className="flex justify-center py-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-              <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Carregando dados da maré...</span>
-            </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-2 px-5 py-4 border-t border-gray-100 dark:border-gray-800">
+          {step === 1 ? (
+            <button
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              Cancelar
+            </button>
+          ) : (
+            <button
+              onClick={handleBack}
+              className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              ← Voltar
+            </button>
           )}
-          
-          {/* Seletor de idioma */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              🌐 Idioma / Language
-            </label>
-            <div className="flex gap-2">
-              {(['pt', 'es', 'en'] as Language[]).map((lang) => (
-                <button
-                  key={lang}
-                  onClick={() => setLanguage(lang)}
-                  className={`flex-1 py-2 rounded-lg border transition-colors ${
-                    language === lang
-                      ? 'bg-cyan-600 text-white border-cyan-600'
-                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {languageLabels[lang]}
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          {/* Busca de apartamento */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              🔍 Buscar apartamento
-            </label>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Nº do apto ou nome do hóspede"
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            />
-          </div>
-          
-          {/* Lista de apartamentos */}
-          {loadingApartments ? (
-            <div className="flex justify-center py-8">
-              <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : filteredApartments.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
-              {apartmentsWithPhone.length === 0 ? (
+
+          {step < 3 ? (
+            <button
+              onClick={handleNext}
+              disabled={
+                (step === 1 && (!canAdvanceFromStep1 || loadingCustomData)) ||
+                (step === 2 && !canAdvanceFromStep2)
+              }
+              className="flex-1 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-medium hover:bg-gray-700 dark:hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              Próximo →
+            </button>
+          ) : (
+            <button
+              onClick={handleSend}
+              disabled={sending}
+              className="flex-1 py-2 bg-[#25D366] text-white rounded-xl text-sm font-medium hover:bg-[#20bd5a] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+            >
+              {sending ? (
                 <>
-                  <p className="mb-2">🏠 Nenhum apartamento ocupado com telefone cadastrado</p>
-                  <p className="text-xs">Faça check-in com telefone para enviar a tábua de maré</p>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Enviando...
                 </>
               ) : (
-                <p>🔍 Nenhum apartamento encontrado para "{searchTerm}"</p>
+                <>
+                  <svg className="w-4 h-4" fill="white" viewBox="0 0 24 24">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.138.564 4.144 1.546 5.879L0 24l6.32-1.504A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0z" fillRule="evenodd" clipRule="evenodd"/>
+                  </svg>
+                  Enviar WhatsApp
+                </>
               )}
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {filteredApartments.map((apt) => (
-                <button
-                  key={apt.number}
-                  onClick={() => setSelectedApt(apt)}
-                  className={`w-full text-left p-3 rounded-lg border transition-all ${
-                    selectedApt?.number === apt.number
-                      ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-900/30 ring-2 ring-cyan-500/50'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-cyan-300 dark:hover:border-cyan-700 bg-white dark:bg-gray-800'
-                  }`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-bold text-gray-800 dark:text-white">
-                        Apartamento {apt.number}
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
-                        {apt.guest}
-                      </p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                        {apt.block}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-green-600 dark:text-green-400 font-mono">
-                        📱 {formatPhoneDisplay(apt.phone)}
-                      </p>
-                      <span className="inline-block w-2 h-2 rounded-full bg-green-500 mt-1" />
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
+            </button>
           )}
         </div>
-        
-        <div className="flex gap-3 p-4 border-t border-gray-200 dark:border-gray-700">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSend}
-            disabled={
-              !selectedApt || 
-              sending || 
-              loadingCustomData ||
-              (sendType === 'single' && !customTideData) ||
-              (sendType === 'multiple' && multipleDaysData.length === 0)
-            }
-            className="flex-1 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-          >
-            {sending ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Enviando...
-              </>
-            ) : (
-              <>
-                📤 Enviar WhatsApp ({languageLabels[language]})
-              </>
-            )}
-          </button>
-        </div>
+
       </div>
     </div>
   );

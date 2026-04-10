@@ -38,8 +38,8 @@ export function Layout() {
   };
 
   const navItems = [
-    { id: 'apts', label: 'Apartamentos', icon: '🏨', path: '/' },
     { id: 'dashboard', label: 'Painel', icon: '📊', path: '/painel' },
+    { id: 'apts', label: 'Apartamentos', icon: '🏨', path: '/' },
     { id: 'os', label: 'Ordens de Serviço', icon: '🔧', path: '/os' },
     { id: 'commissions', label: 'Comissões', icon: '💰', path: '/comissoes' },
     { id: 'log', label: 'Histórico', icon: '📋', path: '/historico' },
