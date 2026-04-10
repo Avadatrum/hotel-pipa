@@ -5,6 +5,7 @@ import { useApartments } from '../hooks/useApartments';
 import { useTheme } from '../contexts/ThemeContext';
 import { Footer } from './Footer';
 import { UserMenu } from './UserMenu';
+import { OSNotificationContainer } from './serviceOrders/OSNotificationContainer';
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -39,6 +40,7 @@ export function Layout() {
   const navItems = [
     { id: 'apts', label: 'Apartamentos', icon: '🏨', path: '/' },
     { id: 'dashboard', label: 'Painel', icon: '📊', path: '/painel' },
+    { id: 'os', label: 'Ordens de Serviço', icon: '🔧', path: '/os' },
     { id: 'commissions', label: 'Comissões', icon: '💰', path: '/comissoes' },
     { id: 'log', label: 'Histórico', icon: '📋', path: '/historico' },
     { id: 'recibos', label: 'Recibos', icon: '🧾', path: '/recibos' },
@@ -217,6 +219,10 @@ export function Layout() {
         </main>
         
       </div>
+
+      {/* Container de Notificações de OS */}
+      <OSNotificationContainer />
+      
     </div>
   );
 }

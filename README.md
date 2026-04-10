@@ -50,12 +50,12 @@ hotel-pipa
 │  │  │  ├─ DashboardHeader.tsx
 │  │  │  ├─ GlobalCommissionCard.tsx
 │  │  │  ├─ GlobalFilters.tsx
-│  │  │  ├─ MyCommissions.tsx
 │  │  │  ├─ Pagination.tsx
 │  │  │  ├─ PromotionFormModal.tsx
 │  │  │  ├─ PromotionsList.tsx
 │  │  │  ├─ SalesRegister.tsx
 │  │  │  ├─ SalesTable.tsx
+│  │  │  ├─ SendTourPromoModal.tsx
 │  │  │  ├─ StatsCards.tsx
 │  │  │  ├─ TableFilters.tsx
 │  │  │  ├─ TourFormModal.tsx
@@ -91,6 +91,7 @@ hotel-pipa
 │  │  │  ├─ CommissionDashboard.tsx
 │  │  │  ├─ CommissionSettings.tsx
 │  │  │  ├─ CommissionsPage.tsx
+│  │  │  ├─ MyCommissions.tsx
 │  │  │  └─ RegisterSalePage.tsx
 │  │  ├─ DashboardPage.tsx
 │  │  ├─ DocumentsPage.tsx
