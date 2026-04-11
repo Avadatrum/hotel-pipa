@@ -65,6 +65,20 @@ hotel-pipa
 │  │  ├─ Layout.tsx
 │  │  ├─ LossesPanel.tsx
 │  │  ├─ ProtectedRoute.tsx
+│  │  ├─ serviceOrders
+│  │  │  ├─ OSCharts.tsx
+│  │  │  ├─ OSDetailModal.tsx
+│  │  │  ├─ OSFilters.tsx
+│  │  │  ├─ OSFormModal.tsx
+│  │  │  ├─ OSImageGenerator.tsx
+│  │  │  ├─ OSKanbanBoard.tsx
+│  │  │  ├─ OSKanbanCard.tsx
+│  │  │  ├─ OSMetrics.tsx
+│  │  │  ├─ OSNotificationContainer.tsx
+│  │  │  ├─ OSNotificationToast.tsx
+│  │  │  ├─ OSQuickActions.tsx
+│  │  │  ├─ OSStatusBadge.tsx
+│  │  │  └─ OSTable.tsx
 │  │  ├─ TabuaMare
 │  │  │  ├─ SendTideModal.tsx
 │  │  │  └─ TabuaMareWidget.tsx
@@ -73,6 +87,7 @@ hotel-pipa
 │  ├─ contexts
 │  │  ├─ AuthContext.tsx
 │  │  ├─ CommissionContext.tsx
+│  │  ├─ OSContext.tsx
 │  │  └─ ThemeContext.tsx
 │  ├─ hooks
 │  │  ├─ useApartmentActions.ts
@@ -81,6 +96,7 @@ hotel-pipa
 │  │  ├─ useFirestore.ts
 │  │  ├─ useNavigation.ts
 │  │  ├─ usePermission.ts
+│  │  ├─ useServiceOrders.ts
 │  │  ├─ useTabuaMare.ts
 │  │  └─ useToast.tsx
 │  ├─ main.tsx
@@ -97,7 +113,13 @@ hotel-pipa
 │  │  ├─ DocumentsPage.tsx
 │  │  ├─ LoginPage.tsx
 │  │  ├─ LogPage.tsx
+│  │  ├─ PublicOSPage.tsx
 │  │  ├─ ReceiptsPage.tsx
+│  │  ├─ serviceOrders
+│  │  │  ├─ ServiceOrderDashboard.tsx
+│  │  │  ├─ ServiceOrderKanban.tsx
+│  │  │  ├─ ServiceOrderReports.tsx
+│  │  │  └─ ServiceOrdersPage.tsx
 │  │  └─ TabuaDeMarePage.tsx
 │  ├─ routes
 │  │  └─ index.tsx
@@ -108,16 +130,19 @@ hotel-pipa
 │  │  ├─ communicationTourService.ts
 │  │  ├─ firebase.ts
 │  │  ├─ seedService.ts
+│  │  ├─ serviceOrderService.ts
 │  │  └─ tabuaMareService.ts
 │  ├─ styles
 │  │  └─ index.css
 │  ├─ types
 │  │  ├─ commission.types.ts
 │  │  ├─ index.ts
+│  │  ├─ serviceOrder.types.ts
 │  │  └─ tabuaMare.types.ts
 │  └─ utils
 │     ├─ commissionCalculations.ts
 │     ├─ formatHelpers.ts
+│     ├─ osHelpers.ts
 │     ├─ phoneFormatter.ts
 │     ├─ tideMessageFormatter.ts
 │     └─ whatsappMessages.ts
