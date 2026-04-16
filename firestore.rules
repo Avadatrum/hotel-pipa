@@ -1,93 +1,16 @@
 rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    
-    function isAuthenticated() {
-      return request.auth != null || true; // Permite acesso se vier do sistema customizado
-    }
-    
-    // Verificar se é admin via documento no Firestore
-    function isAdmin() {
-      return true; // Temporariamente permissivo para não quebrar
-    }
-    
-    // ============ USERS ============
-    match /users/{userId} {
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /tours/{tourId}/{fileName} {
+      // Leitura pública (qualquer pessoa pode ver as fotos)
       allow read: if true;
-      allow write: if true;
-    }
-    
-    // ============ TOURS ============
-    match /tours/{tourId} {
-      allow read: if true;
-      allow write: if true;
-    }
-    
-    // ============ AGENCIES ============
-    match /agencies/{agencyId} {
-      allow read: if true;
-      allow write: if true;
-    }
-    
-    // ============ SALES ============
-    match /sales/{saleId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
-    }
-    
-    // ============ CUSTOM COMMISSIONS ============
-    match /customCommissions/{commissionId} {
-      allow read: if true;
-      allow write: if true;
-    }
-    
-    // ============ COMMISSION PAYMENTS ============
-    match /commissionPayments/{paymentId} {
-      allow read: if true;
-      allow write: if true;
-    }
-    
-    // ============ COMMISSION AUDIT ============
-    match /commissionAudit/{auditId} {
-      allow read: if true;
-      allow write: if true;
-    }
-    
-    // ============ APP SETTINGS ============
-    match /appSettings/{settingId} {
-      allow read: if true;
-      allow write: if true;
-    }
-    
-    // ============ SISTEMA EXISTENTE ============
-    match /apartments/{aptId} {
-      allow read, write: if true;
-    }
-    
-    match /log/{logId} {
-      allow read, write: if true;
-    }
-    
-    match /losses/{lossId} {
-      allow read, write: if true;
-    }
-    
-    match /receipts/{receiptId} {
-      allow read, write: if true;
-    }
-    
-    match /documents/{docId} {
-      allow read, write: if true;
-    }
-    
-    match /config/{configId} {
-      allow read, write: if true;
-    }
-    
-    match /serviceOrders/{osId} {
-      allow read, write: if true;
+      
+      // Escrita APENAS para usuários autenticados
+      allow write: if request.auth != null;
+      
+      // Deleção APENAS para admins
+      allow delete: if request.auth != null && 
+                      request.auth.token.isAdmin == true;
     }
   }
 }

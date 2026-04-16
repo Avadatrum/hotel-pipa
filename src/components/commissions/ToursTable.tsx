@@ -11,8 +11,8 @@ interface Props {
   onUpdateCommission: (tour: Tour, v: number) => Promise<void>;
   onToggleActive: (tour: Tour) => Promise<void>;
   onSendPromo: (tour: Tour) => void;
-  onEditDetails?: (tour: Tour) => void; // 🆕
-  onDelete?: (tour: Tour) => void; // 🆕
+  onEditDetails?: (tour: Tour) => void;
+  onDelete?: (tour: Tour) => void;
 }
 
 function Badge({ tipoPreco }: { tipoPreco: Tour['tipoPreco'] }) {
@@ -43,12 +43,19 @@ export function ToursTable({
   onUpdateCommission, 
   onToggleActive, 
   onSendPromo,
-  onEditDetails, // 🆕
-  onDelete // 🆕
+  onEditDetails,
+  onDelete
 }: Props) {
   const [editingName, setEditingName] = useState<string | null>(null);
   const [editingPrice, setEditingPrice] = useState<string | null>(null);
   const [editingComm, setEditingComm] = useState<string | null>(null);
+
+  // 🆕 Função para copiar o link
+  const handleCopyLink = (tour: Tour) => {
+    const link = `${window.location.origin}/passeio/${tour.id}`;
+    navigator.clipboard?.writeText(link);
+    alert('✅ Link copiado para a área de transferência!');
+  };
 
   if (tours.length === 0) {
     return <p className="text-center text-gray-400 py-10 text-sm">Nenhum item encontrado.</p>;
@@ -86,7 +93,7 @@ export function ToursTable({
                         <button onClick={() => setEditingName(tour.id)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-500 transition-opacity text-xs">✏</button>
                       </div>
                       {tour.descricao && <div className="text-xs text-gray-400 truncate max-w-[200px] mt-0.5">{tour.descricao}</div>}
-                      {/* 🆕 Indicador de fotos */}
+                      {/* Indicador de fotos */}
                       {tour.fotos && tour.fotos.length > 0 && (
                         <div className="text-xs text-purple-500 mt-0.5">📸 {tour.fotos.length} foto(s)</div>
                       )}
@@ -147,7 +154,7 @@ export function ToursTable({
               {/* Ações */}
               <td className="px-3 py-3 text-center">
                 <div className="flex items-center justify-center gap-1">
-                  {/* 🆕 Botão Galeria/Detalhes */}
+                  {/* Botão Galeria/Detalhes */}
                   {onEditDetails && (
                     <button 
                       onClick={() => onEditDetails(tour)} 
@@ -158,6 +165,15 @@ export function ToursTable({
                     </button>
                   )}
                   
+                  {/* 🆕 Botão Copiar Link */}
+                  <button
+                    onClick={() => handleCopyLink(tour)}
+                    className="text-xs px-2 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                    title="Copiar link público"
+                  >
+                    🔗
+                  </button>
+
                   <button 
                     onClick={() => onSendPromo(tour)} 
                     title="Enviar resumo por WhatsApp"
@@ -166,7 +182,7 @@ export function ToursTable({
                     📱
                   </button>
                   
-                  {/* 🆕 Botão Deletar (apenas inativos) */}
+                  {/* Botão Deletar (apenas inativos) */}
                   {onDelete && tour.ativo === false && (
                     <button 
                       onClick={() => onDelete(tour)} 

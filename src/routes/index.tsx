@@ -21,7 +21,8 @@ import { ReceiptsPage } from '../pages/ReceiptsPage';
 import { DocumentsPage } from '../pages/DocumentsPage';
 import { AdminUsersPage } from '../pages/AdminUsersPage';
 import { TabuaDeMarePage } from '../pages/TabuaDeMarePage';
-import { PublicOSPage } from '../pages/PublicOSPage'; // 🆕 Importação da Página Pública
+import { PublicOSPage } from '../pages/PublicOSPage'; 
+import { PublicTourPage } from '../pages/PublicTourPage'; // 🆕 Importação adicionada
 
 // Commissions Pages & Components
 import { CommissionsPage } from '../pages/commissions/CommissionsPage';
@@ -107,8 +108,12 @@ export const router = createBrowserRouter([
     element: <LoginPage />,
   },
   {
-    path: '/osabertas', // 🆕 ROTA PÚBLICA
+    path: '/osabertas', // ROTA PÚBLICA
     element: <PublicOSPage />,
+  },
+  {
+    path: '/passeio/:tourId',  // 🆕 ROTA PÚBLICA
+    element: <PublicTourPage />
   },
   {
     path: '/',

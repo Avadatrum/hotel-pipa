@@ -1,5 +1,6 @@
 // src/components/commissions/TourGalleryManager.tsx
 import { useState, useRef } from 'react';
+import { getAuth } from 'firebase/auth'; // Importação adicionada
 import { storageService } from '../../services/storageService';
 import { useToast } from '../../hooks/useToast';
 import type { Tour } from '../../types';
@@ -18,6 +19,15 @@ export function TourGalleryManager({ tour, onUpdate }: TourGalleryManagerProps) 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+
+    // 🆕 Verificar autenticação
+    const auth = getAuth();
+    if (!auth.currentUser) {
+      showToast('Você precisa estar logado para fazer upload', 'error');
+      return;
+    }
+
+    console.log('✅ Usuário autenticado:', auth.currentUser.email);
 
     // Validar tipos de arquivo
     const invalidFiles = files.filter(f => !f.type.startsWith('image/'));

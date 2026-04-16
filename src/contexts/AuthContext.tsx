@@ -1,15 +1,12 @@
 // src/contexts/AuthContext.tsx
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { 
-  signInWithEmailAndPassword, 
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-} from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth'; // Mantido para o listener de estado
 import type { User as FirebaseUser } from 'firebase/auth';
 import { collection, getDocs } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 import { setCurrentUser } from '../services/apartmentService';
+import { loginUser } from '../services/authService'; // Importação adicionada
 import type { User } from '../types';
 
 interface AuthContextType {
@@ -111,27 +108,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Função de Login atualizada conforme solicitado
   const login = async (email: string, password: string) => {
     console.log('🔐 Iniciando login...');
+    setLoading(true);
+    
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      console.log('✅ Login bem sucedido');
-      // O onAuthStateChanged vai cuidar do resto
-    } catch (error: any) {
-      console.error('❌ Erro no login:', error);
+      // 1. Login no sistema customizado (Firestore)
+      const loggedUser = await loginUser(email, password);
+      console.log('✅ Usuário validado no Firestore');
       
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        throw new Error('Email ou senha incorretos');
-      } else if (error.code === 'auth/too-many-requests') {
-        throw new Error('Muitas tentativas. Tente novamente mais tarde');
-      } else {
-        throw error;
+      // 2. 🆕 Autenticar também no Firebase Auth
+      try {
+        const { signInWithEmailAndPassword } = await import('firebase/auth');
+        await signInWithEmailAndPassword(auth, email, password);
+        console.log('✅ Autenticado no Firebase Auth');
+      } catch (authError: any) {
+        // Se senha estiver errada no Auth, usar a mesma senha
+        console.warn('⚠️ Usuário não autenticado no Auth, tentando criar...');
+        
+        // Criar usuário no Auth com a mesma senha
+        const { createUserWithEmailAndPassword } = await import('firebase/auth');
+        try {
+          await createUserWithEmailAndPassword(auth, email, password);
+          console.log('✅ Usuário criado no Firebase Auth!');
+        } catch (createError) {
+          console.error('❌ Não foi possível criar usuário no Auth:', createError);
+        }
       }
+      
+      setUser(loggedUser);
+      localStorage.setItem('hotel_user', JSON.stringify(loggedUser));
+      setCurrentUser(loggedUser.id, loggedUser.name);
+      
+    } catch (error) {
+      console.error('❌ Erro no login:', error);
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = async () => {
     try {
+      const { signOut: firebaseSignOut } = await import('firebase/auth');
       await firebaseSignOut(auth);
       localStorage.removeItem('hotel_user');
       setUser(null);
