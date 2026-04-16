@@ -3,7 +3,6 @@ import { db } from './firebase';
 import { 
   collection, 
   doc, 
-  // getDoc removido pois não é utilizado
   getDocs, 
   addDoc, 
   updateDoc, 
@@ -11,6 +10,7 @@ import {
   query, 
   where 
 } from 'firebase/firestore';
+// import { getAuth } from 'firebase/auth'; // REMOVIDO: Não utilizado
 import type { User } from '../types';
 
 const COLLECTION = 'users';
@@ -137,4 +137,25 @@ export async function isLastAdmin(userId: string): Promise<boolean> {
   const users = await listUsers();
   const admins = users.filter(u => u.role === 'admin');
   return admins.length === 1 && admins[0].id === userId;
+}
+
+// Resetar senha de qualquer usuário (apenas admin)
+export async function adminResetUserPassword(userEmail: string, newPassword: string): Promise<void> {
+  // Busca o usuário pelo email para obter o ID
+  const usersRef = collection(db, COLLECTION);
+  const q = query(usersRef, where('email', '==', userEmail.toLowerCase()));
+  const querySnapshot = await getDocs(q);
+
+  if (querySnapshot.empty) {
+    throw new Error('Usuário não encontrado para resetar senha');
+  }
+
+  const userDoc = querySnapshot.docs[0];
+  const userRef = doc(db, COLLECTION, userDoc.id);
+
+  // Gera o hash da nova senha
+  const passwordHash = await hashPassword(newPassword);
+
+  // Atualiza diretamente no banco de dados
+  await updateDoc(userRef, { passwordHash });
 }

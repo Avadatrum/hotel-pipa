@@ -1,4 +1,5 @@
 // src/types/index.ts
+
 export interface Apartment {
   occupied: boolean; pax: number; towels: number; chips: number;
   block: string; guest: string; phone?: string;
@@ -26,5 +27,18 @@ export interface Document {
   id?: string; name: string; desc: string; cat: string; mime: string;
   filename: string; data: string; createdAt: string; ts: number; userId: string; userName: string;
 }
-// Re-exporta tipos de comissão para compatibilidade
-export type { TipoPreco, Tour, Agency, CustomCommission, Sale, CommissionAudit, AppSettings } from './commission.types';
+
+// Re-exporta tipos de comissão
+export type { 
+  TipoPreco, 
+  Tour, 
+  Agency, 
+  CustomCommission, 
+  Sale, 
+  CommissionAudit, 
+  AppSettings,
+  PaymentStatus,      // 🆕
+  PaymentMethod,      // 🆕
+  CommissionPayment,  // 🆕
+  AgencyCommissionReport // 🆕
+} from './commission.types';

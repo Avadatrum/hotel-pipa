@@ -3,6 +3,7 @@
 interface Props {
   filterVendedor: string;
   filterStatus: string;
+  filterPaymentStatus?: string; // 🆕
   dateRange: { start: string; end: string };
   uniqueVendors: string[];
   totalSalesCount: number;
@@ -10,11 +11,26 @@ interface Props {
   hasFilters: boolean;
   onFilterVendedorChange: (v: string) => void;
   onFilterStatusChange: (v: string) => void;
+  onFilterPaymentStatusChange?: (v: string) => void; // 🆕
   onDateRangeChange: (r: { start: string; end: string }) => void;
   onClearFilters: () => void;
 }
 
-export function GlobalFilters({ filterVendedor, filterStatus, dateRange, uniqueVendors, totalSalesCount, filteredSalesCount, hasFilters, onFilterVendedorChange, onFilterStatusChange, onDateRangeChange, onClearFilters }: Props) {
+export function GlobalFilters({ 
+  filterVendedor, 
+  filterStatus, 
+  filterPaymentStatus = '', // 🆕
+  dateRange, 
+  uniqueVendors, 
+  totalSalesCount, 
+  filteredSalesCount, 
+  hasFilters, 
+  onFilterVendedorChange, 
+  onFilterStatusChange, 
+  onFilterPaymentStatusChange, // 🆕
+  onDateRangeChange, 
+  onClearFilters 
+}: Props) {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
       <div className="flex flex-wrap gap-3 items-end">
@@ -30,7 +46,7 @@ export function GlobalFilters({ filterVendedor, filterStatus, dateRange, uniqueV
           </div>
         )}
 
-        {/* Status */}
+        {/* Status da Venda */}
         <div className="flex-1 min-w-[120px]">
           <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Status</label>
           <select value={filterStatus} onChange={e => onFilterStatusChange(e.target.value)}
@@ -38,6 +54,17 @@ export function GlobalFilters({ filterVendedor, filterStatus, dateRange, uniqueV
             <option value="">Todos</option>
             <option value="confirmada">Confirmadas</option>
             <option value="cancelada">Canceladas</option>
+          </select>
+        </div>
+
+        {/* 🆕 Status do Pagamento */}
+        <div className="flex-1 min-w-[140px]">
+          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Pagamento</label>
+          <select value={filterPaymentStatus} onChange={e => onFilterPaymentStatusChange?.(e.target.value)}
+            className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Todos</option>
+            <option value="pending">Pendentes</option>
+            <option value="paid">Pagos</option>
           </select>
         </div>
 

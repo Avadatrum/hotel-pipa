@@ -153,7 +153,7 @@ export function OSImageGenerator({ order, onImageReady, onPDFReady }: OSImageGen
       <div className="grid grid-cols-2 gap-5 mb-6">
         <div>
           <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">SOLICITADO POR</p>
-          <p className="text-lg font-semibold text-gray-900">{order.solicitanteNome}</p>
+          <p className="text-lg font-semibold text-gray-900"></p>
           {order.solicitanteSetor && (
             <p className="text-sm text-gray-500">{order.solicitanteSetor}</p>
           )}

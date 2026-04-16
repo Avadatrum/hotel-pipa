@@ -2,13 +2,13 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { db } from '../services/firebase';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import type { Sale, Tour, Agency, CustomCommission } from '../types';
 
 interface CommissionContextType {
   sales: Sale[];
-  tours: Tour[];          // Todos os tours (ativos E inativos) — filtrar no componente
+  tours: Tour[];
   agencies: Agency[];
   customCommissions: CustomCommission[];
   loading: boolean;
@@ -27,46 +27,78 @@ export function CommissionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
-    setLoading(true);
-
-    // Vendas
-    const unsubSales = onSnapshot(
-      query(collection(db, 'sales'), orderBy('dataVenda', 'desc')),
-      snap => setSales(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Sale[]),
-      err => console.error('sales listener:', err)
-    );
-
-    // Tours: TODOS (sem filtro de ativo) — filtrar nos componentes conforme necessário
-    const unsubTours = onSnapshot(
-      query(collection(db, 'tours'), orderBy('nome')),
-      snap => setTours(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Tour[]),
-      err => console.error('tours listener:', err)
-    );
-
-    // Agências (só admin)
-    let unsubAgencies: () => void = () => {};
-    if (user.role === 'admin') {
-      unsubAgencies = onSnapshot(
-        query(collection(db, 'agencies'), orderBy('nome')),
-        snap => setAgencies(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Agency[]),
-        err => console.error('agencies listener:', err)
-      );
+    if (!user) {
+      setLoading(false);
+      return;
     }
+    
+    setLoading(true);
+    
+    // ✅ CORREÇÃO: Usar try/catch e tratamento de erros
+    const unsubscribers: (() => void)[] = [];
 
-    // Comissões personalizadas
-    const unsubComm = onSnapshot(
-      query(collection(db, 'customCommissions'), orderBy('dataInicio', 'desc')),
-      snap => setCustomCommissions(snap.docs.map(d => ({ id: d.id, ...d.data() })) as CustomCommission[]),
-      err => console.error('commissions listener:', err)
-    );
+    try {
+      // Vendas - sem orderBy inicial para evitar erro de índice
+      const qSales = query(collection(db, 'sales'));
+      const unsubSales = onSnapshot(
+        qSales,
+        (snap) => {
+          const salesData = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Sale[];
+          // Ordenar manualmente no cliente
+          salesData.sort((a, b) => {
+            const dateA = a.dataVenda?.toDate?.() || new Date(a.dataVenda);
+            const dateB = b.dataVenda?.toDate?.() || new Date(b.dataVenda);
+            return dateB.getTime() - dateA.getTime();
+          });
+          setSales(salesData);
+        },
+        (err) => {
+          console.error('Erro no listener de sales:', err);
+          // Se for erro de índice, tentar sem ordenação
+          if (err.code === 'failed-precondition') {
+            const fallbackQuery = query(collection(db, 'sales'));
+            onSnapshot(fallbackQuery, (snap) => {
+              setSales(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Sale[]);
+            });
+          }
+        }
+      );
+      unsubscribers.push(unsubSales);
 
-    const timer = setTimeout(() => setLoading(false), 800);
+      // Tours
+      const qTours = query(collection(db, 'tours'));
+      const unsubTours = onSnapshot(qTours, (snap) => {
+        setTours(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Tour[]);
+      });
+      unsubscribers.push(unsubTours);
 
-    return () => {
-      clearTimeout(timer);
-      unsubSales(); unsubTours(); unsubAgencies(); unsubComm();
-    };
+      // Agências (só admin)
+      if (user.role === 'admin') {
+        const qAgencies = query(collection(db, 'agencies'));
+        const unsubAgencies = onSnapshot(qAgencies, (snap) => {
+          setAgencies(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Agency[]);
+        });
+        unsubscribers.push(unsubAgencies);
+      }
+
+      // Comissões personalizadas
+      const qComm = query(collection(db, 'customCommissions'));
+      const unsubComm = onSnapshot(qComm, (snap) => {
+        setCustomCommissions(snap.docs.map(d => ({ id: d.id, ...d.data() })) as CustomCommission[]);
+      });
+      unsubscribers.push(unsubComm);
+
+      // Timer para evitar loading infinito
+      const timer = setTimeout(() => setLoading(false), 1000);
+      
+      return () => {
+        clearTimeout(timer);
+        unsubscribers.forEach(unsub => unsub());
+      };
+    } catch (error) {
+      console.error('Erro ao configurar listeners:', error);
+      setLoading(false);
+    }
   }, [user]);
 
   const totalCommissions = sales
@@ -79,7 +111,15 @@ export function CommissionProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <CommissionContext.Provider value={{ sales, tours, agencies, customCommissions, loading, totalCommissions, refreshData }}>
+    <CommissionContext.Provider value={{ 
+      sales, 
+      tours, 
+      agencies, 
+      customCommissions, 
+      loading, 
+      totalCommissions, 
+      refreshData 
+    }}>
       {children}
     </CommissionContext.Provider>
   );

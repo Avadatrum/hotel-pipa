@@ -23,6 +23,7 @@ hotel-pipa
 │  └─ icons.svg
 ├─ README.md
 ├─ scripts
+│  ├─ migrateUsersToAuth.ts
 │  └─ seedTours.ts
 ├─ settings.json
 ├─ src
@@ -45,12 +46,14 @@ hotel-pipa
 │  │  ├─ Button.tsx
 │  │  ├─ commissions
 │  │  │  ├─ AgencyManager.tsx
+│  │  │  ├─ AgencyReportModal.tsx
 │  │  │  ├─ CommissionCharts.tsx
 │  │  │  ├─ ConfirmModal.tsx
 │  │  │  ├─ DashboardHeader.tsx
 │  │  │  ├─ GlobalCommissionCard.tsx
 │  │  │  ├─ GlobalFilters.tsx
 │  │  │  ├─ Pagination.tsx
+│  │  │  ├─ PaymentModal.tsx
 │  │  │  ├─ PromotionFormModal.tsx
 │  │  │  ├─ PromotionsList.tsx
 │  │  │  ├─ SalesRegister.tsx
@@ -58,7 +61,9 @@ hotel-pipa
 │  │  │  ├─ SendTourPromoModal.tsx
 │  │  │  ├─ StatsCards.tsx
 │  │  │  ├─ TableFilters.tsx
+│  │  │  ├─ TourDetailModal.tsx
 │  │  │  ├─ TourFormModal.tsx
+│  │  │  ├─ TourGalleryManager.tsx
 │  │  │  ├─ ToursTable.tsx
 │  │  │  └─ VendorRanking.tsx
 │  │  ├─ Footer.tsx
@@ -88,6 +93,7 @@ hotel-pipa
 │  │  ├─ AuthContext.tsx
 │  │  ├─ CommissionContext.tsx
 │  │  ├─ OSContext.tsx
+│  │  ├─ PaymentContext.tsx
 │  │  └─ ThemeContext.tsx
 │  ├─ hooks
 │  │  ├─ useApartmentActions.ts
@@ -120,6 +126,7 @@ hotel-pipa
 │  │  │  ├─ ServiceOrderKanban.tsx
 │  │  │  ├─ ServiceOrderReports.tsx
 │  │  │  └─ ServiceOrdersPage.tsx
+│  │  ├─ SetAdminPage.tsx
 │  │  └─ TabuaDeMarePage.tsx
 │  ├─ routes
 │  │  └─ index.tsx
@@ -131,6 +138,7 @@ hotel-pipa
 │  │  ├─ firebase.ts
 │  │  ├─ seedService.ts
 │  │  ├─ serviceOrderService.ts
+│  │  ├─ storageService.ts
 │  │  └─ tabuaMareService.ts
 │  ├─ styles
 │  │  └─ index.css
@@ -146,6 +154,7 @@ hotel-pipa
 │     ├─ phoneFormatter.ts
 │     ├─ tideMessageFormatter.ts
 │     └─ whatsappMessages.ts
+├─ storage.rules
 ├─ tailwind.config.js
 ├─ tsconfig.app.json
 ├─ tsconfig.json

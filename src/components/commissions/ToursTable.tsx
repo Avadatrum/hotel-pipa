@@ -11,6 +11,8 @@ interface Props {
   onUpdateCommission: (tour: Tour, v: number) => Promise<void>;
   onToggleActive: (tour: Tour) => Promise<void>;
   onSendPromo: (tour: Tour) => void;
+  onEditDetails?: (tour: Tour) => void; // 🆕
+  onDelete?: (tour: Tour) => void; // 🆕
 }
 
 function Badge({ tipoPreco }: { tipoPreco: Tour['tipoPreco'] }) {
@@ -34,7 +36,16 @@ function InlineInput({ defaultValue, onSave, onCancel, type = 'text' }: {
   );
 }
 
-export function ToursTable({ tours, onUpdateName, onUpdatePrice, onUpdateCommission, onToggleActive, onSendPromo }: Props) {
+export function ToursTable({ 
+  tours, 
+  onUpdateName, 
+  onUpdatePrice, 
+  onUpdateCommission, 
+  onToggleActive, 
+  onSendPromo,
+  onEditDetails, // 🆕
+  onDelete // 🆕
+}: Props) {
   const [editingName, setEditingName] = useState<string | null>(null);
   const [editingPrice, setEditingPrice] = useState<string | null>(null);
   const [editingComm, setEditingComm] = useState<string | null>(null);
@@ -75,6 +86,10 @@ export function ToursTable({ tours, onUpdateName, onUpdatePrice, onUpdateCommiss
                         <button onClick={() => setEditingName(tour.id)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-500 transition-opacity text-xs">✏</button>
                       </div>
                       {tour.descricao && <div className="text-xs text-gray-400 truncate max-w-[200px] mt-0.5">{tour.descricao}</div>}
+                      {/* 🆕 Indicador de fotos */}
+                      {tour.fotos && tour.fotos.length > 0 && (
+                        <div className="text-xs text-purple-500 mt-0.5">📸 {tour.fotos.length} foto(s)</div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -131,10 +146,37 @@ export function ToursTable({ tours, onUpdateName, onUpdatePrice, onUpdateCommiss
 
               {/* Ações */}
               <td className="px-3 py-3 text-center">
-                <button onClick={() => onSendPromo(tour)} title="Enviar resumo por WhatsApp"
-                  className="text-xs px-2.5 py-1.5 rounded-lg bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors font-medium">
-                  Divulgar
-                </button>
+                <div className="flex items-center justify-center gap-1">
+                  {/* 🆕 Botão Galeria/Detalhes */}
+                  {onEditDetails && (
+                    <button 
+                      onClick={() => onEditDetails(tour)} 
+                      title="Editar fotos e descrição"
+                      className="text-xs px-2 py-1.5 rounded-lg bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors font-medium"
+                    >
+                      🖼️
+                    </button>
+                  )}
+                  
+                  <button 
+                    onClick={() => onSendPromo(tour)} 
+                    title="Enviar resumo por WhatsApp"
+                    className="text-xs px-2 py-1.5 rounded-lg bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors font-medium"
+                  >
+                    📱
+                  </button>
+                  
+                  {/* 🆕 Botão Deletar (apenas inativos) */}
+                  {onDelete && tour.ativo === false && (
+                    <button 
+                      onClick={() => onDelete(tour)} 
+                      title="Excluir permanentemente"
+                      className="text-xs px-2 py-1.5 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors font-medium"
+                    >
+                      🗑️
+                    </button>
+                  )}
+                </div>
               </td>
             </tr>
           ))}

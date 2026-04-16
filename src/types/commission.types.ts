@@ -1,19 +1,22 @@
 // src/types/commission.types.ts
 
 export type TipoPreco = 'por_pessoa' | 'por_passeio';
+export type PaymentStatus = 'pending' | 'paid';
+export type PaymentMethod = 'cash' | 'pix' | 'transfer' | 'other';
 
 export interface Tour {
   id: string;
   nome: string;
-  descricao?: string;           // Texto resumo do passeio para envio ao cliente via WhatsApp
+  descricao?: string;
   precoBase: number;
-  comissaoPadrao: number;       // Valor fixo em R$
+  comissaoPadrao: number;
   unidade: string;
   tipo?: string;
   tipoPreco: TipoPreco;
-  capacidadeMaxima?: number;    // Apenas para 'por_passeio'
+  capacidadeMaxima?: number;
   agenciaId?: string | null;
   ativo: boolean;
+  fotos?: string[]; // 🆕 URLs das fotos no Storage
   createdAt?: any;
   createdBy?: string;
   updatedBy?: string;
@@ -62,8 +65,41 @@ export interface Sale {
   agenciaId?: string | null;
   agenciaNome?: string | null;
   observacoes?: string;
+  
+  // 🆕 CAMPOS DE PAGAMENTO
+  paymentStatus: PaymentStatus;
+  paidAt?: any;
+  paidBy?: string;
+  paidByName?: string;
+  paymentMethod?: PaymentMethod;
+  paymentObservations?: string;
+  
   createdAt?: any;
   updatedAt?: any;
+}
+
+// 🆕 NOVO TIPO PARA PAGAMENTOS EM LOTE
+export interface CommissionPayment {
+  id: string;
+  saleIds: string[];
+  totalAmount: number;
+  paymentMethod: PaymentMethod;
+  paidAt: any;
+  paidBy: string;
+  paidByName: string;
+  observations?: string;
+  createdAt?: any;
+}
+
+// 🆕 TIPO PARA RELATÓRIO DE AGÊNCIA
+export interface AgencyCommissionReport {
+  agencyId: string;
+  agencyName: string;
+  agencyPhone?: string;
+  pendingSales: Sale[];
+  totalPending: number;
+  periodStart: Date;
+  periodEnd: Date;
 }
 
 export interface CommissionAudit {
@@ -79,4 +115,5 @@ export interface CommissionAudit {
 
 export interface AppSettings {
   comissaoPadraoGlobal: number;
+  numeroRecepcionistas?: number; // 🆕 Padrão 4
 }
