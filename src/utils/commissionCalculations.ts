@@ -37,21 +37,10 @@ export function calcularComissaoIndividual(comissaoTotal: number, numeroRecepcio
   return comissaoTotal / numeroRecepcionistas;
 }
 
-// Interface para tipar o objeto de agência no Map
-interface AgenciaGroup {
-  agencyId: string;
-  agencyName: string;
-  agencyPhone?: string;
-  sales: any[];
-  total: number;
-}
-
 // 🆕 NOVA FUNÇÃO: Calcula comissão pendente vs paga
 export function calcularSaldos(vendas: any[]) {
-  // 🔧 CORREÇÃO: Considera vendas sem paymentStatus como "pending"
   const pendentes = vendas.filter(v => {
     if (v.status !== 'confirmada') return false;
-    // Se não tem paymentStatus ou é 'pending', considera pendente
     return !v.paymentStatus || v.paymentStatus === 'pending';
   });
   
@@ -63,7 +52,6 @@ export function calcularSaldos(vendas: any[]) {
   const totalPago = pagas.reduce((sum, v) => sum + (v.comissaoCalculada || 0), 0);
   const totalGeral = totalPendente + totalPago;
   
-  // Valor individual (dividido por 4)
   const pendenteIndividual = calcularComissaoIndividual(totalPendente);
   const pagoIndividual = calcularComissaoIndividual(totalPago);
   const totalIndividual = pendenteIndividual + pagoIndividual;
@@ -81,11 +69,10 @@ export function calcularSaldos(vendas: any[]) {
 }
 
 // 🆕 Função para agrupar vendas pendentes por agência
-export function agruparVendasPendentesPorAgencia(vendas: any[]): AgenciaGroup[] {
-  const porAgencia = new Map();
+export function agruparVendasPendentesPorAgencia(vendas: any[]) {
+  const porAgencia: Record<string, any> = {};
   
   vendas.forEach((venda) => {
-    // 🔧 CORREÇÃO: Verificação mais flexível
     const isConfirmada = venda.status === 'confirmada';
     const isPending = !venda.paymentStatus || venda.paymentStatus === 'pending';
     const hasAgencia = venda.agenciaId;
@@ -93,20 +80,22 @@ export function agruparVendasPendentesPorAgencia(vendas: any[]): AgenciaGroup[] 
     if (!isConfirmada || !isPending || !hasAgencia) return;
     
     const key = venda.agenciaId;
-    const existing = porAgencia.get(key) || {
-      agencyId: venda.agenciaId,
-      agencyName: venda.agenciaNome || 'Agência',
-      agencyPhone: venda.agenciaTelefone,
-      sales: [],
-      total: 0
-    };
     
-    existing.sales.push(venda);
-    existing.total += venda.comissaoCalculada || 0;
-    porAgencia.set(key, existing);
+    if (!porAgencia[key]) {
+      porAgencia[key] = {
+        agencyId: venda.agenciaId,
+        agencyName: venda.agenciaNome || 'Agência',
+        agencyPhone: venda.agenciaTelefone,
+        sales: [],
+        total: 0
+      };
+    }
+    
+    porAgencia[key].sales.push(venda);
+    porAgencia[key].total += venda.comissaoCalculada || 0;
   });
   
-  return Array.from(porAgencia.values());
+  return Object.values(porAgencia);
 }
 
 export function formatCurrency(value: number): string {

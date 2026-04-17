@@ -16,6 +16,7 @@ import { Pagination } from '../../components/commissions/Pagination';
 import { ConfirmModal } from '../../components/commissions/ConfirmModal';
 import { PaymentModal } from '../../components/commissions/PaymentModal';
 import { AgencyReportModal } from '../../components/commissions/AgencyReportModal';
+import { PeriodControl } from '../../components/commissions/PeriodControl'; // 🆕
 import type { AgencyCommissionReport } from '../../types';
 
 const PAGE_SIZE = 20;
@@ -26,10 +27,16 @@ export function CommissionDashboard() {
   const { showToast } = useToast();
   const isAdmin = user?.role === 'admin';
 
+  // 🆕 Estado do Período Atual
+  const [periodoAtual, setPeriodoAtual] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+
   // Filtros
   const [filterVendedor, setFilterVendedor] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
-  const [filterPaymentStatus, setFilterPaymentStatus] = useState(''); // 🆕
+  const [filterPaymentStatus, setFilterPaymentStatus] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const hasGlobalFilters = !!(filterVendedor || filterStatus || filterPaymentStatus || dateRange.start || dateRange.end);
 
@@ -52,7 +59,7 @@ export function CommissionDashboard() {
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [editingSale, setEditingSale] = useState<any>(null);
   
-  // 🆕 Modais novos
+  // Modais novos
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showAgencyReportModal, setShowAgencyReportModal] = useState(false);
   const [selectedAgencyReport, setSelectedAgencyReport] = useState<AgencyCommissionReport | null>(null);
@@ -60,10 +67,23 @@ export function CommissionDashboard() {
   // ── Filtragem ──────────────────────────────────────────────────────────────
   const filteredSales = useMemo(() => {
     return (sales || []).filter(sale => {
+      // 🆕 Filtrar por período (apenas vendas não arquivadas ou do período atual)
+      if (periodoAtual) {
+        // Se a venda tem período definido e é diferente do atual, não mostrar
+        if (sale.periodoComissao && sale.periodoComissao !== periodoAtual) {
+          return false;
+        }
+        // Se está arquivada, não mostrar
+        if (sale.arquivado) {
+          return false;
+        }
+      }
+      
+      // ... resto dos filtros existentes
       const saleDate = safeToDate(sale.dataVenda);
       if (filterVendedor && sale.vendedorNome !== filterVendedor) return false;
       if (filterStatus && sale.status !== filterStatus) return false;
-      if (filterPaymentStatus && sale.paymentStatus !== filterPaymentStatus) return false; // 🆕
+      if (filterPaymentStatus && sale.paymentStatus !== filterPaymentStatus) return false;
       if (dateRange.start && saleDate < new Date(dateRange.start + 'T00:00:00')) return false;
       if (dateRange.end) {
         const end = new Date(dateRange.end + 'T23:59:59');
@@ -80,7 +100,7 @@ export function CommissionDashboard() {
       }
       return true;
     });
-  }, [sales, filterVendedor, filterStatus, filterPaymentStatus, dateRange, tableFilters]);
+  }, [sales, filterVendedor, filterStatus, filterPaymentStatus, dateRange, tableFilters, periodoAtual]);
 
   // ── Ordenação ──────────────────────────────────────────────────────────────
   const sortedSales = useMemo(() => {
@@ -109,10 +129,10 @@ export function CommissionDashboard() {
 
   const totalPages = Math.max(1, Math.ceil(sortedSales.length / PAGE_SIZE));
 
-  // 🆕 Cálculo de saldos (pendente vs pago)
+  // Cálculo de saldos (pendente vs pago)
   const saldos = useMemo(() => calcularSaldos(filteredSales), [filteredSales]);
 
-  // 🆕 Vendas pendentes por agência
+  // Vendas pendentes por agência
   const pendingByAgency = useMemo(() => {
     return agruparVendasPendentesPorAgencia(filteredSales);
   }, [filteredSales]);
@@ -145,7 +165,7 @@ export function CommissionDashboard() {
 
   const uniqueVendors = useMemo(() => Array.from(new Set((sales || []).map(s => s.vendedorNome))).sort(), [sales]);
 
-  // 🆕 Seleção de vendas
+  // Seleção de vendas
   const handleSelectSale = (saleId: string, selected: boolean) => {
     const newSelected = new Set(selectedSales);
     if (selected) {
@@ -175,14 +195,22 @@ export function CommissionDashboard() {
     return selectedSalesList.reduce((sum, s) => sum + s.comissaoCalculada, 0);
   }, [selectedSalesList]);
 
-  // 🆕 Abrir relatório de agência
+  // Abrir relatório de agência
   const handleOpenAgencyReport = (agencyId: string) => {
     const agency = agencies.find(a => a.id === agencyId);
+    
+    // 🔧 CORREÇÃO: Mesma lógica do agrupamento
     const salesForAgency = filteredSales.filter(s => 
       s.agenciaId === agencyId && 
       s.status === 'confirmada' && 
-      s.paymentStatus === 'pending'
+      (!s.paymentStatus || s.paymentStatus === 'pending')
     );
+    
+    console.log('📊 Relatório da agência:', {
+      agency: agency?.nome,
+      totalVendas: salesForAgency.length,
+      vendas: salesForAgency
+    });
     
     if (salesForAgency.length === 0) {
       showToast('Nenhuma venda pendente para esta agência', 'info');
@@ -194,10 +222,11 @@ export function CommissionDashboard() {
       agencyName: agency?.nome || 'Agência',
       agencyPhone: agency?.telefone,
       pendingSales: salesForAgency,
-      totalPending: salesForAgency.reduce((sum, s) => sum + s.comissaoCalculada, 0),
+      totalPending: salesForAgency.reduce((sum, s) => sum + (s.comissaoCalculada || 0), 0),
       periodStart: new Date(Math.min(...salesForAgency.map(s => safeToDate(s.dataVenda).getTime()))),
       periodEnd: new Date()
     });
+    
     setShowAgencyReportModal(true);
   };
 
@@ -294,7 +323,7 @@ export function CommissionDashboard() {
         description={`Você excluirá permanentemente ${filteredSales.length} venda(s). Essa ação não pode ser desfeita.`}
         confirmLabel="Excluir tudo" danger onConfirm={handleDeleteAll} onCancel={() => setShowDeleteAllModal(false)} />
 
-      {/* 🆕 Modal de Pagamento */}
+      {/* Modal de Pagamento */}
       <PaymentModal
         isOpen={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
@@ -306,7 +335,7 @@ export function CommissionDashboard() {
         totalAmount={totalSelectedAmount}
       />
 
-      {/* 🆕 Modal de Relatório por Agência */}
+      {/* Modal de Relatório por Agência */}
       <AgencyReportModal
         isOpen={showAgencyReportModal}
         onClose={() => setShowAgencyReportModal(false)}
@@ -334,7 +363,14 @@ export function CommissionDashboard() {
           </div>
         </div>
 
-        {/* 🆕 Cards de Saldo (Pendente vs Pago) */}
+        {/* 🆕 Controle de Período */}
+        <PeriodControl
+          currentPeriod={periodoAtual}
+          onPeriodChange={setPeriodoAtual}
+          onArchiveComplete={refreshData}
+        />
+
+        {/* Cards de Saldo (Pendente vs Pago) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="bg-orange-50 dark:bg-orange-900/20 rounded-2xl p-4 border border-orange-200 dark:border-orange-800">
             <p className="text-xs text-orange-600 dark:text-orange-400 uppercase tracking-wide">Pendente Total</p>
@@ -369,7 +405,7 @@ export function CommissionDashboard() {
           </div>
         </div>
 
-        {/* 🆕 Botão de Pagamento em Lote */}
+        {/* Botão de Pagamento em Lote */}
         {selectedSalesList.length > 0 && (
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 flex items-center justify-between">
             <div>
@@ -389,7 +425,7 @@ export function CommissionDashboard() {
           </div>
         )}
 
-        {/* 🆕 Lista de Agências com Pendências */}
+        {/* Lista de Agências com Pendências */}
         {pendingByAgency.length > 0 && (
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
             <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-3">
@@ -464,7 +500,7 @@ export function CommissionDashboard() {
             hasFilters={hasGlobalFilters || hasTableFilters}
             onClearGlobalFilters={clearAllFilters}
             onClearTableFilters={() => { setTableFilters({ cliente: '', passeio: '', dataPasseio: '' }); setPage(1); }}
-            // 🆕 Props para seleção
+            // Props para seleção
             selectedSales={selectedSales}
             onSelectSale={handleSelectSale}
             onSelectAll={handleSelectAll}

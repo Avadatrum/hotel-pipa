@@ -74,6 +74,11 @@ export interface Sale {
   paymentMethod?: PaymentMethod;
   paymentObservations?: string;
   
+  // 🆕 CAMPOS DE ARQUIVAMENTO E PERÍODO
+  periodoComissao?: string; // 🆕 Formato: "2024-01"
+  arquivado?: boolean; // 🆕
+  dataArquivamento?: any; // 🆕
+  
   createdAt?: any;
   updatedAt?: any;
 }

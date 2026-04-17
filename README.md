@@ -44,6 +44,7 @@ hotel-pipa
 │  │  ├─ ApartmentCard.tsx
 │  │  ├─ ApartmentHistoryModal.tsx
 │  │  ├─ Button.tsx
+│  │  ├─ ChangePasswordModal.tsx
 │  │  ├─ commissions
 │  │  │  ├─ AgencyManager.tsx
 │  │  │  ├─ AgencyReportModal.tsx
@@ -98,7 +99,6 @@ hotel-pipa
 │  ├─ hooks
 │  │  ├─ useApartmentActions.ts
 │  │  ├─ useApartments.ts
-│  │  ├─ useAuth.ts
 │  │  ├─ useFirestore.ts
 │  │  ├─ useNavigation.ts
 │  │  ├─ usePermission.ts
@@ -120,6 +120,7 @@ hotel-pipa
 │  │  ├─ LoginPage.tsx
 │  │  ├─ LogPage.tsx
 │  │  ├─ PublicOSPage.tsx
+│  │  ├─ PublicTourPage.tsx
 │  │  ├─ ReceiptsPage.tsx
 │  │  ├─ serviceOrders
 │  │  │  ├─ ServiceOrderDashboard.tsx
