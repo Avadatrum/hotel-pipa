@@ -152,7 +152,7 @@ export const LostAndFoundPage: React.FC = () => {
               <LostItemForm
                 onSubmit={selectedItem ? handleEditItem : handleCreateItem}
                 onCancel={() => { setShowForm(false); setSelectedItem(null); }}
-                initialData={selectedItem || undefined}
+                initialData={selectedItem as any}
               />
             </div>
           </div>

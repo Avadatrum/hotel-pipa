@@ -89,20 +89,23 @@ export const LostAndFoundProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  // ✅ FUNÇÃO CORRIGIDA
+  // ✅ FUNÇÃO CORRIGIDA (Tipagem de Array)
   const updateItem = async (id: string, data: Partial<LostItem>, photo?: File) => {
     console.log('📝 Context: Atualizando item', { id, hasPhoto: !!photo });
     
     try {
-      // Remover campos que não devem ir para o Firestore
-      const { photoURL, id: itemId, createdAt, photo, ...updateData } = data as any;
+      // 🆕 REMOVER campos de arquivo e IDs antes de enviar para o Firestore
+      const { photo: photoField, photos: photosField, photoURL, id: itemId, createdAt, ...updateData } = data as any;
       
-      // Chamar serviço com os dados limpos e a foto separada
-      await lostAndFoundService.updateLostItem(id, updateData, photo);
+      // 🛠️ CORREÇÃO: Transformar File único em Array File[] para o serviço
+      const photosArray = photo ? [photo] : undefined;
+
+      // Chamar serviço APENAS com dados textuais e o array de fotos
+      await lostAndFoundService.updateLostItem(id, updateData, photosArray);
       
       showToast('Item atualizado com sucesso!', 'success');
       
-      // Aguardar um pouco para o Firestore processar
+      // Aguardar o Firestore processar
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Recarregar lista

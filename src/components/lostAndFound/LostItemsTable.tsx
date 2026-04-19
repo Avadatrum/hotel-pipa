@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import type { LostItem, ItemStatus } from '../../types/lostAndFound.types';
 import { StatusBadge } from './StatusBadge';
-import { ItemImage } from './ItemImage'; 
+import { ImageGallery } from './ImageGallery'; // 🆕 Importação do componente de galeria
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -119,9 +119,9 @@ export const LostItemsTable: React.FC<LostItemsTableProps> = ({
               <th className={thCls} onClick={() => handleSort('uniqueCode')}>
                 Código <SortIcon k="uniqueCode" />
               </th>
-              {/* Coluna Foto */}
+              {/* 🆕 Coluna Foto agora usando Galeria */}
               <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Foto
+                Fotos
               </th>
               <th className={thCls} onClick={() => handleSort('category')}>
                 Categoria <SortIcon k="category" />
@@ -166,13 +166,12 @@ export const LostItemsTable: React.FC<LostItemsTableProps> = ({
                     </button>
                   </td>
 
-                  {/* 🆕 Coluna Foto no corpo da tabela com Key para forçar atualização */}
+                  {/* 🆕 Coluna Foto/Galeria */}
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <ItemImage 
-                      key={item.photoURL || 'no-photo'} // 🆕 Força re-render quando URL muda
-                      photoURL={item.photoURL} 
-                      alt={item.description} 
-                      className="w-12 h-12 object-cover rounded"
+                    <ImageGallery 
+                      photos={item.photos} 
+                      photoURL={item.photoURL}
+                      alt={item.description}
                     />
                   </td>
 

@@ -31,7 +31,7 @@ export const LostAndFoundListPage: React.FC = () => {
   const [returnName, setReturnName] = useState('');
   const [showLabelModal, setShowLabelModal] = useState(false);
   
-  // 🆕 Estado para forçar refresh da tabela
+  // Estado para forçar refresh da tabela
   const [refreshKey, setRefreshKey] = useState(0);
 
   const handleCreateItem = async (data: any) => {
@@ -86,11 +86,26 @@ export const LostAndFoundListPage: React.FC = () => {
   const returnedCount = items.filter((i) => i.status === 'entregue').length;
   const discardedCount = items.filter((i) => i.status === 'descartado').length;
 
+  // Função auxiliar para formatar os dados para o formulário
+  const formatInitialData = (item: LostItem) => {
+    // Cria uma cópia e remove o 'id' pois o formulário não espera um ID na tipagem estrita de initialData
+    const { id, photos, ...rest } = item;
+    
+    // Omitimos 'photos' pois converter URLs (strings) para File Objects requer assincronicidade/fetch
+    // e pode quebrar o fluxo de initialização síncrona. 
+    // O formulário deve lidar com a exibição das fotos existentes via outra prop ou lógica interna,
+    // ou aceitar que photos virá undefined na edição inicial.
+    return {
+      ...rest,
+      photoURL: item.photos && item.photos.length > 0 ? item.photos[0] : undefined,
+    };
+  };
+
   return (
     <div className="space-y-6">
       {/* Ação principal */}
       <div className="flex justify-end gap-2">
-        {/* 🆕 Botão para forçar refresh */}
+        {/* Botão para forçar refresh */}
         <button
           onClick={() => {
             setRefreshKey(prev => prev + 1);
@@ -137,7 +152,6 @@ export const LostAndFoundListPage: React.FC = () => {
           <p className="text-sm mt-1">Ajuste os filtros ou cadastre um novo item.</p>
         </div>
       ) : (
-        // 🆕 Passe a key para o componente de tabela
         <LostItemsTable 
           key={refreshKey}
           items={items}
@@ -168,7 +182,8 @@ export const LostAndFoundListPage: React.FC = () => {
               <LostItemForm
                 onSubmit={selectedItem ? handleEditItem : handleCreateItem}
                 onCancel={() => { setShowForm(false); setSelectedItem(null); }}
-                initialData={selectedItem || undefined}
+                // 🛠️ RESOLUÇÃO: Utiliza a função formatInitialData para compatibilizar os tipos
+                initialData={selectedItem ? formatInitialData(selectedItem) : undefined}
               />
             </div>
           </div>

@@ -14,15 +14,16 @@ export type ItemStatus = 'guardado' | 'entregue' | 'descartado';
 export interface LostItem {
   id: string;
   uniqueCode: string;
-  category: ItemCategory;
+  category: 'eletrônico' | 'documento' | 'roupa' | 'acessório' | 'bagagem' | 'objeto_pessoal' | 'outro';
   description: string;
   color?: string;
   foundDate: Date;
   foundLocation: string;
   deliveredBy: string;
   deliveredByPhone?: string;
-  photoURL?: string;
-  status: ItemStatus;
+  photoURL?: string; // 🆕 Mantém compatibilidade com itens antigos (foto única)
+  photos?: string[]; // 🆕 Array de URLs para múltiplas fotos
+  status: 'guardado' | 'entregue' | 'descartado';
   returnedTo?: string;
   returnedDate?: Date;
   observations?: string;
@@ -32,15 +33,15 @@ export interface LostItem {
 }
 
 export interface LostItemFormData {
-  category: ItemCategory;
+  category: LostItem['category'];
   description: string;
   color?: string;
   foundDate: Date;
   foundLocation: string;
   deliveredBy: string;
   deliveredByPhone?: string;
-  photo?: File;
-  photoURL?: string;
+  photo?: File; // Foto única (compatibilidade)
+  photos?: File[]; // 🆕 Múltiplas fotos (array de arquivos)
   observations?: string;
 }
 

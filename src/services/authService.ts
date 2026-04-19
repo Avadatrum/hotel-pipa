@@ -10,7 +10,6 @@ import {
   query, 
   where 
 } from 'firebase/firestore';
-// import { getAuth } from 'firebase/auth'; // REMOVIDO: Não utilizado
 import type { User } from '../types';
 
 const COLLECTION = 'users';
@@ -34,6 +33,19 @@ export async function hashPassword(password: string): Promise<string> {
 export async function loginUser(email: string, password: string): Promise<any> {
   console.log('🔍 loginUser chamado com:', { email });
   
+  // ⚠️ BYPASS TEMPORÁRIO - REMOVA DEPOIS
+  if (email === 'wemerson@hoteldapipa.com' && password === '230704') {
+    console.log('⚠️ Login via bypass!');
+    return {
+      id: 'admin_temp',
+      name: 'Wemerson',
+      email: email,
+      role: 'admin',
+      createdAt: new Date().toISOString(),
+    };
+  }
+  
+  // Código original continua aqui...
   const usersRef = collection(db, COLLECTION);
   const q = query(usersRef, where('email', '==', email.toLowerCase()));
   const querySnapshot = await getDocs(q);

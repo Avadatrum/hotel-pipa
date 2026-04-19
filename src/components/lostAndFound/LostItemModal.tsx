@@ -4,7 +4,7 @@ import React from 'react';
 import type { LostItem } from '../../types/lostAndFound.types';
 import { StatusBadge } from './StatusBadge';
 import { LostItemLabel } from './LostItemLabel';
-import { ItemImage } from './ItemImage'; // 🆕 Importação adicionada
+import { ImageGallery } from './ImageGallery'; // 🆕 Importação da galeria
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -84,16 +84,14 @@ export const LostItemModal: React.FC<LostItemModalProps> = ({ item, onClose, onE
           </div>
         </div>
 
-        {/* 🆕 Foto usando ItemImage */}
-        {item.photoURL && (
-          <div className="px-6 pt-6">
-            <ItemImage 
-              photoURL={item.photoURL} 
-              alt={item.description}
-              className="w-full max-h-64 object-contain rounded-lg"
-            />
-          </div>
-        )}
+        {/* 🆕 Galeria de Fotos */}
+        <div className="px-6 pt-6 space-y-4">
+          <ImageGallery 
+            photos={item.photos} 
+            photoURL={item.photoURL}
+            alt={item.description}
+          />
+        </div>
 
         {/* Corpo */}
         <div className="p-6 grid grid-cols-2 gap-4">

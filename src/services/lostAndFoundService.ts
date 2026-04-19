@@ -54,158 +54,136 @@ export const generateUniqueCode = async (): Promise<string> => {
   return `ACH-${yearShort}-${newNumber}`;
 };
 
-// Upload de foto
-export const uploadItemPhoto = async (itemId: string, file: File): Promise<string> => {
-  console.log('📤 Iniciando upload para:', `lostAndFound/${itemId}/photo`);
+// Upload de múltiplas fotos (Mantido para compatibilidade, embora update use foto única agora)
+export const uploadItemPhotos = async (itemId: string, files: File[]): Promise<string[]> => {
+  console.log(`📤 Iniciando upload de ${files.length} fotos...`);
   
-  try {
-    // Usar timestamp no nome do arquivo para evitar cache
+  const uploadPromises = files.map(async (file, index) => {
     const timestamp = Date.now();
     const fileExtension = file.name.split('.').pop();
-    const fileName = `photo_${timestamp}.${fileExtension}`;
+    const fileName = `photo_${timestamp}_${index}.${fileExtension}`;
+    const photoRef = ref(storage, `lostAndFound/${itemId}/${fileName}`);
     
-    const storageRef = ref(storage, `lostAndFound/${itemId}/${fileName}`);
-    
-    // Metadados para evitar cache
     const metadata = {
       contentType: file.type,
       cacheControl: 'no-cache, no-store, must-revalidate',
       customMetadata: {
         uploadedAt: new Date().toISOString(),
         itemId: itemId,
-        timestamp: timestamp.toString()
+        index: index.toString()
       }
     };
     
-    console.log('📁 Fazendo upload:', storageRef.fullPath);
+    await uploadBytes(photoRef, file, metadata);
+    const downloadURL = await getDownloadURL(photoRef);
     
-    // Upload
-    await uploadBytes(storageRef, file, metadata);
-    
-    // Obter URL
-    const downloadURL = await getDownloadURL(storageRef);
-    console.log('📎 URL gerada:', downloadURL);
-    
+    console.log(`✅ Foto ${index + 1} enviada:`, downloadURL);
     return downloadURL;
+  });
+  
+  return await Promise.all(uploadPromises);
+};
+
+// Upload de foto única (legado)
+export const uploadItemPhoto = async (itemId: string, file: File): Promise<string> => {
+  const urls = await uploadItemPhotos(itemId, [file]);
+  return urls[0];
+};
+
+// Deletar todas as fotos de um item
+export const deleteItemPhotos = async (itemId: string): Promise<void> => {
+  try {
+    const folderRef = ref(storage, `lostAndFound/${itemId}`);
+    const listResult = await listAll(folderRef);
+    
+    for (const item of listResult.items) {
+      await deleteObject(item);
+      console.log('🗑️ Deletado:', item.fullPath);
+    }
+  } catch (error: any) {
+    console.log('ℹ️ Nenhuma foto para deletar ou erro:', error.code);
+  }
+};
+
+// Deletar uma foto específica
+export const deleteSinglePhoto = async (photoURL: string): Promise<void> => {
+  try {
+    const photoRef = ref(storage, photoURL);
+    await deleteObject(photoRef);
+    console.log('🗑️ Foto deletada:', photoURL);
   } catch (error) {
-    console.error('❌ Erro detalhado no upload:', error);
+    console.error('Erro ao deletar foto:', error);
     throw error;
   }
 };
 
-// Criar item
+// Criar item com suporte a múltiplas fotos
 export const createLostItem = async (
   data: LostItemFormData, 
   userId: string
 ): Promise<LostItem> => {
   const uniqueCode = await generateUniqueCode();
-  let photoURL = undefined;
   
-  const itemData: Omit<LostItem, 'id'> = {
+  const itemData: any = {
     uniqueCode,
     category: data.category,
     description: data.description,
     color: data.color,
-    foundDate: data.foundDate,
+    foundDate: Timestamp.fromDate(data.foundDate),
     foundLocation: data.foundLocation,
     deliveredBy: data.deliveredBy,
     deliveredByPhone: data.deliveredByPhone,
     status: 'guardado',
-    createdAt: new Date(),
+    createdAt: Timestamp.fromDate(new Date()),
     createdBy: userId,
-    updatedAt: new Date(),
+    updatedAt: Timestamp.fromDate(new Date()),
     observations: data.observations
   };
   
-  const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-    ...itemData,
-    foundDate: Timestamp.fromDate(data.foundDate),
-    createdAt: Timestamp.fromDate(itemData.createdAt),
-    updatedAt: Timestamp.fromDate(itemData.updatedAt)
-  });
+  const docRef = await addDoc(collection(db, COLLECTION_NAME), itemData);
   
-  if (data.photo) {
-    photoURL = await uploadItemPhoto(docRef.id, data.photo);
-    await updateDoc(docRef, { photoURL });
+  // Upload de múltiplas fotos
+  let photos: string[] = [];
+  let photoURL: string | undefined;
+  
+  // Verifica se veio array ou arquivo único
+  const filesToUpload = data.photos || (data.photo ? [data.photo] : []);
+  
+  if (filesToUpload.length > 0) {
+    photos = await uploadItemPhotos(docRef.id, filesToUpload);
+    photoURL = photos[0]; // Primeira foto como principal
+    
+    await updateDoc(docRef, { photos, photoURL });
   }
   
   return {
     id: docRef.id,
     ...itemData,
-    photoURL,
     foundDate: data.foundDate,
-    createdAt: itemData.createdAt,
-    updatedAt: itemData.updatedAt
-  };
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    photos,
+    photoURL
+  } as LostItem;
 };
 
-// ✅ FUNÇÃO CORRIGIDA: Salvar sempre que houver foto nova
+// ✅ FUNÇÃO ATUALIZADA (Foto Única)
 export const updateLostItem = async (
   id: string, 
-  data: Partial<Omit<LostItem, 'id' | 'photoURL' | 'photo'>>,
+  data: Partial<Omit<LostItem, 'id' | 'photoURL' | 'photos'>>,
   newPhoto?: File
 ): Promise<void> => {
   console.log('📝 ATUALIZANDO ITEM:', id);
-  console.log('📸 Tem nova foto?', !!newPhoto);
   
   const docRef = doc(db, COLLECTION_NAME, id);
   const updateData: any = {};
   
-  // 🆕 PRIMEIRO: Processar a nova foto (se existir)
-  if (newPhoto) {
-    console.log('📤 Processando nova foto...');
-    
-    try {
-      // 1. Deletar TODAS as fotos antigas da pasta
-      try {
-        const folderRef = ref(storage, `lostAndFound/${id}`);
-        const listResult = await listAll(folderRef);
-        
-        // Deletar todos os arquivos na pasta
-        for (const itemRef of listResult.items) {
-          await deleteObject(itemRef);
-          console.log('🗑️ Deletado:', itemRef.fullPath);
-        }
-      } catch (error: any) {
-        // Se a pasta não existir ou erro de permissão, ignoramos e seguimos
-        if (error.code !== 'storage/object-not-found') {
-          console.warn('⚠️ Erro ao limpar fotos antigas:', error);
-        } else {
-          console.log('ℹ️ Nenhuma foto antiga para deletar');
-        }
-      }
-      
-      // 2. Upload da nova foto (usando função auxiliar ou lógica local)
-      // Nota: Reutilizei a lógica interna aqui para garantir o controle exato dos metadados
-      const timestamp = Date.now();
-      const fileExtension = newPhoto.name.split('.').pop();
-      const fileName = `photo_${timestamp}.${fileExtension}`;
-      const photoRef = ref(storage, `lostAndFound/${id}/${fileName}`);
-      
-      const metadata = {
-        contentType: newPhoto.type,
-        cacheControl: 'no-cache, no-store, must-revalidate',
-        customMetadata: {
-          uploadedAt: new Date().toISOString(),
-          timestamp: timestamp.toString()
-        }
-      };
-      
-      await uploadBytes(photoRef, newPhoto, metadata);
-      const newPhotoURL = await getDownloadURL(photoRef);
-      
-      console.log('✅ Nova URL gerada:', newPhotoURL);
-      
-      // 3. 🆕 ADICIONAR a nova URL aos dados de atualização
-      updateData.photoURL = newPhotoURL;
-      
-    } catch (error) {
-      console.error('❌ Erro ao processar foto:', error);
-      throw error;
-    }
-  }
+  // 🆕 REMOVER qualquer campo de arquivo residual
+  delete (data as any).photo;
+  delete (data as any).photos;
+  delete (data as any).photoURL;
   
-  // SEGUNDO: Processar outros dados do formulário
+  // Processar outros dados textuais
   if (data && Object.keys(data).length > 0) {
     Object.keys(data).forEach(key => {
       if (data[key as keyof typeof data] !== undefined) {
@@ -217,7 +195,7 @@ export const updateLostItem = async (
   // Sempre atualizar o timestamp
   updateData.updatedAt = Timestamp.fromDate(new Date());
   
-  // Converter datas para Timestamp do Firestore
+  // Converter datas
   if (updateData.foundDate instanceof Date) {
     updateData.foundDate = Timestamp.fromDate(updateData.foundDate);
   }
@@ -225,38 +203,56 @@ export const updateLostItem = async (
     updateData.returnedDate = Timestamp.fromDate(updateData.returnedDate);
   }
   
-  // TERCEIRO: Salvar TUDO no Firestore de uma única vez
-  console.log('💾 Salvando no Firestore:', updateData);
-  
-  try {
+  // Salvar dados textuais PRIMEIRO
+  if (Object.keys(updateData).length > 0) {
+    console.log('💾 Salvando no Firestore:', updateData);
     await updateDoc(docRef, updateData);
-    console.log('✅ Documento atualizado com sucesso!');
-    
-    // (Opcional) Verificar se salvou corretamente (apenas para debug)
-    const verifyDoc = await getDoc(docRef);
-    console.log('🔍 Verificação - photoURL no Firestore:', verifyDoc.data()?.photoURL);
-    
-  } catch (error) {
-    console.error('❌ Erro ao salvar no Firestore:', error);
-    throw error;
   }
+  
+  // DEPOIS processar a foto (se existir)
+  if (newPhoto) {
+    console.log('📸 Processando nova foto...');
+    
+    try {
+      // Deletar foto antiga (tenta deletar o caminho específico 'photo', se existir)
+      try {
+        const oldPhotoRef = ref(storage, `lostAndFound/${id}/photo`);
+        await deleteObject(oldPhotoRef);
+      } catch (error: any) {
+        if (error.code !== 'storage/object-not-found') {
+          console.warn('⚠️ Erro ao deletar foto antiga:', error.code);
+        }
+      }
+      
+      // Upload da nova foto
+      const timestamp = Date.now();
+      const fileExtension = newPhoto.name.split('.').pop();
+      const fileName = `photo_${timestamp}.${fileExtension}`;
+      const photoRef = ref(storage, `lostAndFound/${id}/${fileName}`);
+      
+      await uploadBytes(photoRef, newPhoto);
+      const newPhotoURL = await getDownloadURL(photoRef);
+      
+      // Atualizar APENAS o campo photoURL
+      await updateDoc(docRef, { 
+        photoURL: newPhotoURL,
+        updatedAt: Timestamp.fromDate(new Date())
+      });
+      
+      console.log('✅ Foto atualizada:', newPhotoURL);
+    } catch (error) {
+      console.error('❌ Erro ao processar foto:', error);
+      throw error;
+    }
+  }
+  
+  console.log('✅ Item atualizado com sucesso');
 };
 
 // Deletar item
 export const deleteLostItem = async (id: string): Promise<void> => {
-  // Deletar fotos se existirem (usando listAll pois o nome do arquivo varia)
-  try {
-    const folderRef = ref(storage, `lostAndFound/${id}`);
-    const listResult = await listAll(folderRef);
-    
-    if (listResult.items.length > 0) {
-      const deletePromises = listResult.items.map(itemRef => deleteObject(itemRef));
-      await Promise.all(deletePromises);
-      console.log(`🗑️ ${deletePromises.length} arquivo(s) de imagem deletado(s)`);
-    }
-  } catch (error) {
-    console.warn('⚠️ Erro ao deletar fotos (pode não existirem):', error);
-  }
+  // Deletar todas as fotos da pasta
+  await deleteItemPhotos(id);
   
   await deleteDoc(doc(db, COLLECTION_NAME, id));
 };
@@ -270,7 +266,7 @@ export const getLostItem = async (id: string): Promise<LostItem | null> => {
   
   const data = docSnap.data();
   return {
-    id: docSnap.id,
+    id: docRef.id,
     uniqueCode: data.uniqueCode,
     category: data.category,
     description: data.description,
@@ -280,6 +276,7 @@ export const getLostItem = async (id: string): Promise<LostItem | null> => {
     deliveredBy: data.deliveredBy,
     deliveredByPhone: data.deliveredByPhone,
     photoURL: data.photoURL,
+    photos: data.photos || [],
     status: data.status,
     returnedTo: data.returnedTo,
     returnedDate: data.returnedDate?.toDate(),
@@ -332,6 +329,7 @@ export const getLostItems = async (filters?: LostItemFilters): Promise<LostItem[
       deliveredBy: data.deliveredBy,
       deliveredByPhone: data.deliveredByPhone,
       photoURL: data.photoURL,
+      photos: data.photos || [],
       status: data.status,
       returnedTo: data.returnedTo,
       returnedDate: data.returnedDate?.toDate(),
