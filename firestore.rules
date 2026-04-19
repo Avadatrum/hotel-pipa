@@ -1,16 +1,68 @@
 rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /tours/{tourId}/{fileName} {
-      // Leitura pública (qualquer pessoa pode ver as fotos)
-      allow read: if true;
-      
-      // Escrita APENAS para usuários autenticados
-      allow write: if request.auth != null;
-      
-      // Deleção APENAS para admins
-      allow delete: if request.auth != null && 
-                      request.auth.token.isAdmin == true;
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Função helper para verificar se é admin
+    function isAdmin() {
+      return request.auth != null && 
+             (request.auth.token.admin == true || 
+              request.auth.token.role == 'admin');
     }
+    
+    // Função para verificar se é o próprio usuário
+    function isSelf(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Coleção users
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create: if isAdmin();
+      allow update: if isSelf(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // Coleção de apartamentos
+    match /apartments/{document} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Coleção: lostItems
+    match /lostItems/{document} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+    
+    // Coleção de Ordens de Serviço
+    match /serviceOrders/{document} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if isAdmin();
+    }
+    
+    // Coleção de Comissões
+    match /commissions/{document} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if isAdmin();
+    }
+    
+    // Coleção de Logs/Histórico
+    match /logs/{document} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if isAdmin();
+    }
+    
+    // Regra de fallback
+    match /{document=**} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+    
   }
 }

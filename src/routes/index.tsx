@@ -21,8 +21,14 @@ import { ReceiptsPage } from '../pages/ReceiptsPage';
 import { DocumentsPage } from '../pages/DocumentsPage';
 import { AdminUsersPage } from '../pages/AdminUsersPage';
 import { TabuaDeMarePage } from '../pages/TabuaDeMarePage';
-import { PublicOSPage } from '../pages/PublicOSPage'; 
-import { PublicTourPage } from '../pages/PublicTourPage'; // 🆕 Importação adicionada
+import { PublicOSPage } from '../pages/PublicOSPage';
+import { PublicTourPage } from '../pages/PublicTourPage';
+
+// Lost & Found Pages
+import { LostAndFoundLayout } from '../pages/lostAndFound/LostAndFoundLayout';
+import { LostAndFoundListPage } from '../pages/lostAndFound/LostAndFoundListPage';
+import { LostAndFoundReportsPage } from '../pages/lostAndFound/LostAndFoundReportsPage';
+import { LostAndFoundScanPage } from '../pages/lostAndFound/LostAndFoundScanPage';
 
 // Commissions Pages & Components
 import { CommissionsPage } from '../pages/commissions/CommissionsPage';
@@ -76,10 +82,7 @@ function ServiceOrderListPage() {
 
       <OSFormModal
         isOpen={showFormModal}
-        onClose={() => {
-          setShowFormModal(false);
-          setSelectedOrder(null);
-        }}
+        onClose={() => { setShowFormModal(false); setSelectedOrder(null); }}
         onSuccess={() => setShowFormModal(false)}
         editData={selectedOrder}
         mode={selectedOrder ? 'edit' : 'create'}
@@ -87,10 +90,7 @@ function ServiceOrderListPage() {
 
       <OSDetailModal
         isOpen={showDetailModal}
-        onClose={() => {
-          setShowDetailModal(false);
-          setSelectedOrder(null);
-        }}
+        onClose={() => { setShowDetailModal(false); setSelectedOrder(null); }}
         order={selectedOrder}
         onEdit={(order) => {
           setShowDetailModal(false);
@@ -108,12 +108,12 @@ export const router = createBrowserRouter([
     element: <LoginPage />,
   },
   {
-    path: '/osabertas', // ROTA PÚBLICA
+    path: '/osabertas',
     element: <PublicOSPage />,
   },
   {
-    path: '/passeio/:tourId',  // 🆕 ROTA PÚBLICA
-    element: <PublicTourPage />
+    path: '/passeio/:tourId',
+    element: <PublicTourPage />,
   },
   {
     path: '/',
@@ -129,16 +129,28 @@ export const router = createBrowserRouter([
       { path: 'recibos', element: <ReceiptsPage /> },
       { path: 'documentos', element: <DocumentsPage /> },
       { path: 'tabua-de-mare', element: <TabuaDeMarePage /> },
-      
+
+      // ── Achados & Perdidos ──────────────────────────────────────────
+      {
+        path: 'achados-e-perdidos', // ← CORRIGIDO: português
+        element: <LostAndFoundLayout />,
+        children: [
+          { index: true,        element: <LostAndFoundListPage /> },
+          { path: 'relatorios', element: <LostAndFoundReportsPage /> },
+          { path: 'scanner',    element: <LostAndFoundScanPage /> },
+        ],
+      },
+      // ────────────────────────────────────────────────────────────────
+
       // Rotas do Sistema de OS
       {
         path: 'os',
         element: <ServiceOrdersPage />,
         children: [
-          { index: true, element: <ServiceOrderListPage /> },
-          { path: 'dashboard', element: <ServiceOrderDashboard /> },
-          { path: 'kanban', element: <ServiceOrderKanban /> },
-          { path: 'relatorios', element: <ServiceOrderReports /> },
+          { index: true,           element: <ServiceOrderListPage /> },
+          { path: 'dashboard',     element: <ServiceOrderDashboard /> },
+          { path: 'kanban',        element: <ServiceOrderKanban /> },
+          { path: 'relatorios',    element: <ServiceOrderReports /> },
         ],
       },
 
@@ -147,16 +159,16 @@ export const router = createBrowserRouter([
         path: 'comissoes',
         element: <CommissionsPage />,
         children: [
-          { index: true, element: <RegisterSalePage /> },
-          { path: 'registrar', element: <RegisterSalePage /> },
-          { path: 'dashboard', element: <CommissionDashboard /> },
-          { path: 'graficos', element: <CommissionCharts /> },
-          { path: 'minhas-comissoes', element: <MyCommissions /> },
-          { path: 'agencias', element: <AdminRoute><AgencyManager /></AdminRoute> },
-          { path: 'configurar', element: <AdminRoute><CommissionSettings /></AdminRoute> },
+          { index: true,                element: <RegisterSalePage /> },
+          { path: 'registrar',          element: <RegisterSalePage /> },
+          { path: 'dashboard',          element: <CommissionDashboard /> },
+          { path: 'graficos',           element: <CommissionCharts /> },
+          { path: 'minhas-comissoes',   element: <MyCommissions /> },
+          { path: 'agencias',           element: <AdminRoute><AgencyManager /></AdminRoute> },
+          { path: 'configurar',         element: <AdminRoute><CommissionSettings /></AdminRoute> },
         ],
       },
-      
+
       { path: 'admin/usuarios', element: <AdminRoute><AdminUsersPage /></AdminRoute> },
     ],
   },

@@ -16,7 +16,7 @@ import { Pagination } from '../../components/commissions/Pagination';
 import { ConfirmModal } from '../../components/commissions/ConfirmModal';
 import { PaymentModal } from '../../components/commissions/PaymentModal';
 import { AgencyReportModal } from '../../components/commissions/AgencyReportModal';
-import { PeriodControl } from '../../components/commissions/PeriodControl'; // 🆕
+import { PeriodControl, getCurrentQuinzena, getQuinzenaDateRange } from '../../components/commissions/PeriodControl';
 import type { AgencyCommissionReport } from '../../types';
 
 const PAGE_SIZE = 20;
@@ -27,10 +27,9 @@ export function CommissionDashboard() {
   const { showToast } = useToast();
   const isAdmin = user?.role === 'admin';
 
-  // 🆕 Estado do Período Atual
+  // 🆕 Estado do Período Atual (AGORA USADO!)
   const [periodoAtual, setPeriodoAtual] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return getCurrentQuinzena(); // Formato "2024-01-1"
   });
 
   // Filtros
@@ -64,33 +63,57 @@ export function CommissionDashboard() {
   const [showAgencyReportModal, setShowAgencyReportModal] = useState(false);
   const [selectedAgencyReport, setSelectedAgencyReport] = useState<AgencyCommissionReport | null>(null);
 
-  // ── Filtragem ──────────────────────────────────────────────────────────────
+  // ── Filtragem com a NOVA LÓGICA ──────────────────────────────────────────────
   const filteredSales = useMemo(() => {
+    const { start, end } = getQuinzenaDateRange(periodoAtual);
+    
     return (sales || []).filter(sale => {
-      // 🆕 Filtrar por período (apenas vendas não arquivadas ou do período atual)
-      if (periodoAtual) {
-        // Se a venda tem período definido e é diferente do atual, não mostrar
-        if (sale.periodoComissao && sale.periodoComissao !== periodoAtual) {
-          return false;
-        }
-        // Se está arquivada, não mostrar
-        if (sale.arquivado) {
-          return false;
-        }
+      // 🔥 REGRA 1: Vendas pendentes SEMPRE aparecem (são dívidas ativas)
+      const isPendente = sale.status === 'confirmada' && 
+                        (!sale.paymentStatus || sale.paymentStatus === 'pending');
+      
+      if (isPendente) {
+        // Verifica apenas os filtros adicionais (vendedor, cliente, etc)
+        // Mas NÃO filtra por data/período
+        return checkAdditionalFilters(sale);
       }
       
-      // ... resto dos filtros existentes
+      // 🔥 REGRA 2: Vendas pagas e canceladas são filtradas por período
+      // Baseado na data de REALIZAÇÃO do passeio (não data da venda)
+      const dataRealizacao = sale.dataPasseioRealizacao 
+        ? safeToDate(sale.dataPasseioRealizacao)
+        : safeToDate(sale.dataVenda); // fallback para data da venda
+      
+      const isInPeriod = dataRealizacao >= start && dataRealizacao <= end;
+      
+      if (!isInPeriod) return false;
+      
+      // Verifica arquivamento (apenas para vendas pagas)
+      if (sale.paymentStatus === 'paid' && sale.arquivado) {
+        return false;
+      }
+      
+      // Filtros adicionais
+      return checkAdditionalFilters(sale);
+    });
+    
+    // Função auxiliar para filtros adicionais
+    function checkAdditionalFilters(sale: any): boolean {
       const saleDate = safeToDate(sale.dataVenda);
+      
       if (filterVendedor && sale.vendedorNome !== filterVendedor) return false;
       if (filterStatus && sale.status !== filterStatus) return false;
       if (filterPaymentStatus && sale.paymentStatus !== filterPaymentStatus) return false;
+      
       if (dateRange.start && saleDate < new Date(dateRange.start + 'T00:00:00')) return false;
       if (dateRange.end) {
         const end = new Date(dateRange.end + 'T23:59:59');
         if (saleDate > end) return false;
       }
+      
       if (tableFilters.cliente && !sale.clienteNome?.toLowerCase().includes(tableFilters.cliente.toLowerCase())) return false;
       if (tableFilters.passeio && !sale.passeioNome?.toLowerCase().includes(tableFilters.passeio.toLowerCase())) return false;
+      
       if (tableFilters.dataPasseio && sale.dataPasseioRealizacao) {
         const tripDate = safeToDate(sale.dataPasseioRealizacao);
         const filterDate = new Date(tableFilters.dataPasseio);
@@ -98,9 +121,10 @@ export function CommissionDashboard() {
       } else if (tableFilters.dataPasseio && !sale.dataPasseioRealizacao) {
         return false;
       }
+      
       return true;
-    });
-  }, [sales, filterVendedor, filterStatus, filterPaymentStatus, dateRange, tableFilters, periodoAtual]);
+    }
+  }, [sales, periodoAtual, filterVendedor, filterStatus, filterPaymentStatus, dateRange, tableFilters]);
 
   // ── Ordenação ──────────────────────────────────────────────────────────────
   const sortedSales = useMemo(() => {
@@ -132,6 +156,27 @@ export function CommissionDashboard() {
   // Cálculo de saldos (pendente vs pago)
   const saldos = useMemo(() => calcularSaldos(filteredSales), [filteredSales]);
 
+  // Cálculo de vendas futuras (passeios ainda não realizados)
+  const vendasFuturas = useMemo(() => {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    
+    return filteredSales.filter(sale => {
+      if (sale.status !== 'confirmada') return false;
+      if (!sale.dataPasseioRealizacao) return false;
+      
+      const dataPasseio = safeToDate(sale.dataPasseioRealizacao);
+      return dataPasseio > hoje;
+    });
+  }, [filteredSales]);
+
+  const vendasFuturasTotal = useMemo(() => 
+    vendasFuturas.reduce((sum, s) => sum + s.comissaoCalculada, 0),
+    [vendasFuturas]
+  );
+
+  const vendasFuturasCount = vendasFuturas.length;
+
   // Vendas pendentes por agência
   const pendingByAgency = useMemo(() => {
     return agruparVendasPendentesPorAgencia(filteredSales);
@@ -144,8 +189,10 @@ export function CommissionDashboard() {
     const totalComissoes = confirmadas.reduce((a, c) => a + c.comissaoCalculada, 0);
     const totalVendasValor = confirmadas.reduce((a, c) => a + c.valorTotal, 0);
     return {
-      totalVendas: confirmadas.length, totalCanceladas: canceladas.length,
-      totalComissoes, totalVendasValor,
+      totalVendas: confirmadas.length, 
+      totalCanceladas: canceladas.length,
+      totalComissoes, 
+      totalVendasValor,
       mediaComissao: confirmadas.length > 0 ? totalComissoes / confirmadas.length : 0,
       taxaCancelamento: filteredSales.length > 0 ? ((canceladas.length / filteredSales.length) * 100).toFixed(1) : '0.0',
     };
@@ -199,18 +246,11 @@ export function CommissionDashboard() {
   const handleOpenAgencyReport = (agencyId: string) => {
     const agency = agencies.find(a => a.id === agencyId);
     
-    // 🔧 CORREÇÃO: Mesma lógica do agrupamento
     const salesForAgency = filteredSales.filter(s => 
       s.agenciaId === agencyId && 
       s.status === 'confirmada' && 
       (!s.paymentStatus || s.paymentStatus === 'pending')
     );
-    
-    console.log('📊 Relatório da agência:', {
-      agency: agency?.nome,
-      totalVendas: salesForAgency.length,
-      vendas: salesForAgency
-    });
     
     if (salesForAgency.length === 0) {
       showToast('Nenhuma venda pendente para esta agência', 'info');
@@ -236,17 +276,30 @@ export function CommissionDashboard() {
     setDeletingId(id);
     try {
       await deleteDoc(doc(db, 'sales', id));
-      showToast(`Venda de ${nome} excluída`, 'success'); refreshData();
-    } catch { showToast('Erro ao excluir', 'error'); } finally { setDeletingId(null); }
+      showToast(`Venda de ${nome} excluída`, 'success'); 
+      refreshData();
+    } catch { 
+      showToast('Erro ao excluir', 'error'); 
+    } finally { 
+      setDeletingId(null); 
+    }
   };
 
   const handleCancelSale = async (id: string, nome: string) => {
     if (!isAdmin) { showToast('Apenas administradores podem cancelar', 'error'); return; }
     setCancellingId(id);
     try {
-      await updateDoc(doc(db, 'sales', id), { status: 'cancelada', updatedAt: Timestamp.now() });
-      showToast(`Venda de ${nome} cancelada`, 'success'); refreshData();
-    } catch { showToast('Erro ao cancelar', 'error'); } finally { setCancellingId(null); }
+      await updateDoc(doc(db, 'sales', id), { 
+        status: 'cancelada', 
+        updatedAt: Timestamp.now() 
+      });
+      showToast(`Venda de ${nome} cancelada`, 'success'); 
+      refreshData();
+    } catch { 
+      showToast('Erro ao cancelar', 'error'); 
+    } finally { 
+      setCancellingId(null); 
+    }
   };
 
   const handleDeleteAll = async () => {
@@ -257,8 +310,13 @@ export function CommissionDashboard() {
       const batch = writeBatch(db);
       filteredSales.forEach(s => batch.delete(doc(db, 'sales', s.id)));
       await batch.commit();
-      showToast(`${filteredSales.length} venda(s) excluída(s)`, 'success'); refreshData();
-    } catch { showToast('Erro ao excluir em lote', 'error'); } finally { setDeletingAll(false); }
+      showToast(`${filteredSales.length} venda(s) excluída(s)`, 'success'); 
+      refreshData();
+    } catch { 
+      showToast('Erro ao excluir em lote', 'error'); 
+    } finally { 
+      setDeletingAll(false); 
+    }
   };
 
   const handleExportCSV = () => {
@@ -288,9 +346,18 @@ export function CommissionDashboard() {
   };
 
   const clearAllFilters = () => {
-    setFilterVendedor(''); setFilterStatus(''); setFilterPaymentStatus('');
+    setFilterVendedor(''); 
+    setFilterStatus(''); 
+    setFilterPaymentStatus('');
     setDateRange({ start: '', end: '' });
-    setTableFilters({ cliente: '', passeio: '', dataPasseio: '' }); setPage(1);
+    setTableFilters({ cliente: '', passeio: '', dataPasseio: '' }); 
+    setPage(1);
+  };
+
+  // 🔥 Handler para mudança de período (AGORA setPeriodoAtual É USADO!)
+  const handlePeriodChange = (newPeriod: string) => {
+    setPeriodoAtual(newPeriod);
+    setPage(1); // Resetar paginação ao mudar de período
   };
 
   if (loading) {
@@ -312,16 +379,28 @@ export function CommissionDashboard() {
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setEditingSale(null)} />
           <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <SalesRegister editingSale={editingSale} onCancelEdit={() => setEditingSale(null)}
-                onSaveSuccess={() => { setEditingSale(null); refreshData(); }} />
+              <SalesRegister 
+                editingSale={editingSale} 
+                onCancelEdit={() => setEditingSale(null)}
+                onSaveSuccess={() => { 
+                  setEditingSale(null); 
+                  refreshData(); 
+                }} 
+              />
             </div>
           </div>
         </div>
       )}
 
-      <ConfirmModal open={showDeleteAllModal} title="Excluir vendas filtradas?"
+      <ConfirmModal 
+        open={showDeleteAllModal} 
+        title="Excluir vendas filtradas?"
         description={`Você excluirá permanentemente ${filteredSales.length} venda(s). Essa ação não pode ser desfeita.`}
-        confirmLabel="Excluir tudo" danger onConfirm={handleDeleteAll} onCancel={() => setShowDeleteAllModal(false)} />
+        confirmLabel="Excluir tudo" 
+        danger 
+        onConfirm={handleDeleteAll} 
+        onCancel={() => setShowDeleteAllModal(false)} 
+      />
 
       {/* Modal de Pagamento */}
       <PaymentModal
@@ -350,80 +429,93 @@ export function CommissionDashboard() {
             <p className="text-sm text-gray-500">{(sales || []).length} vendas no total</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleExportCSV}
-              className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            <button 
+              onClick={handleExportCSV}
+              className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
               Exportar CSV
             </button>
             {isAdmin && filteredSales.length > 0 && (
-              <button onClick={() => setShowDeleteAllModal(true)} disabled={deletingAll}
-                className="px-3 py-2 text-sm border border-red-200 dark:border-red-800 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50">
+              <button 
+                onClick={() => setShowDeleteAllModal(true)} 
+                disabled={deletingAll}
+                className="px-3 py-2 text-sm border border-red-200 dark:border-red-800 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+              >
                 Excluir filtradas
               </button>
             )}
           </div>
         </div>
 
-        {/* 🆕 Controle de Período */}
+        {/* 🆕 Controle de Período - AGORA COM O HANDLER CORRETO */}
         <PeriodControl
           currentPeriod={periodoAtual}
-          onPeriodChange={setPeriodoAtual}
+          onPeriodChange={handlePeriodChange} // 🔥 AQUI usa setPeriodoAtual!
           onArchiveComplete={refreshData}
         />
 
-        {/* Cards de Saldo (Pendente vs Pago) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Cards de Status - NOVO */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="bg-orange-50 dark:bg-orange-900/20 rounded-2xl p-4 border border-orange-200 dark:border-orange-800">
-            <p className="text-xs text-orange-600 dark:text-orange-400 uppercase tracking-wide">Pendente Total</p>
-            <p className="text-2xl font-bold text-orange-700 dark:text-orange-300 mt-1">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">⏳</span>
+              <div>
+                <p className="text-xs text-orange-600 dark:text-orange-400 uppercase tracking-wide">
+                  Pendentes (sempre visíveis)
+                </p>
+                <p className="text-sm text-orange-700 dark:text-orange-300">
+                  Comissões a receber
+                </p>
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">
               {formatCurrency(saldos.totalPendente)}
             </p>
-            <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">{saldos.qtdPendentes} vendas</p>
+            <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+              {saldos.qtdPendentes} vendas pendentes
+            </p>
           </div>
           
           <div className="bg-green-50 dark:bg-green-900/20 rounded-2xl p-4 border border-green-200 dark:border-green-800">
-            <p className="text-xs text-green-600 dark:text-green-400 uppercase tracking-wide">Pago Total</p>
-            <p className="text-2xl font-bold text-green-700 dark:text-green-300 mt-1">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">✅</span>
+              <div>
+                <p className="text-xs text-green-600 dark:text-green-400 uppercase tracking-wide">
+                  Pagas na Quinzena
+                </p>
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  Comissões já recebidas
+                </p>
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-green-700 dark:text-green-300">
               {formatCurrency(saldos.totalPago)}
             </p>
-            <p className="text-xs text-green-600 dark:text-green-400 mt-1">{saldos.qtdPagas} vendas</p>
+            <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+              {saldos.qtdPagas} vendas pagas
+            </p>
           </div>
           
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-4 border border-blue-200 dark:border-blue-800">
-            <p className="text-xs text-blue-600 dark:text-blue-400 uppercase tracking-wide">Pendente/Recepcionista</p>
-            <p className="text-2xl font-bold text-blue-700 dark:text-blue-300 mt-1">
-              {formatCurrency(saldos.pendenteIndividual)}
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">📅</span>
+              <div>
+                <p className="text-xs text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+                  Vendas Futuras
+                </p>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  Passeios não realizados
+                </p>
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+              {formatCurrency(vendasFuturasTotal)}
             </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">dividido por 4</p>
-          </div>
-          
-          <div className="bg-purple-50 dark:bg-purple-900/20 rounded-2xl p-4 border border-purple-200 dark:border-purple-800">
-            <p className="text-xs text-purple-600 dark:text-purple-400 uppercase tracking-wide">Total Geral</p>
-            <p className="text-2xl font-bold text-purple-700 dark:text-purple-300 mt-1">
-              {formatCurrency(saldos.totalGeral)}
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+              {vendasFuturasCount} vendas agendadas
             </p>
-            <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">histórico completo</p>
           </div>
         </div>
-
-        {/* Botão de Pagamento em Lote */}
-        {selectedSalesList.length > 0 && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 flex items-center justify-between">
-            <div>
-              <p className="font-medium text-blue-700 dark:text-blue-300">
-                {selectedSalesList.length} venda(s) selecionada(s)
-              </p>
-              <p className="text-sm text-blue-600 dark:text-blue-400">
-                Total: {formatCurrency(totalSelectedAmount)}
-              </p>
-            </div>
-            <button
-              onClick={() => setShowPaymentModal(true)}
-              className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 transition-colors"
-            >
-              💰 Registrar Pagamento
-            </button>
-          </div>
-        )}
 
         {/* Lista de Agências com Pendências */}
         {pendingByAgency.length > 0 && (
@@ -479,7 +571,10 @@ export function CommissionDashboard() {
             <TableFilters 
               filters={tableFilters}
               onFiltersChange={f => { setTableFilters(f); setPage(1); }}
-              onClearFilters={() => { setTableFilters({ cliente: '', passeio: '', dataPasseio: '' }); setPage(1); }}
+              onClearFilters={() => { 
+                setTableFilters({ cliente: '', passeio: '', dataPasseio: '' }); 
+                setPage(1); 
+              }}
               hasFilters={hasTableFilters} 
               totalResults={filteredSales.length} 
             />
@@ -499,16 +594,22 @@ export function CommissionDashboard() {
             deletingAll={deletingAll}
             hasFilters={hasGlobalFilters || hasTableFilters}
             onClearGlobalFilters={clearAllFilters}
-            onClearTableFilters={() => { setTableFilters({ cliente: '', passeio: '', dataPasseio: '' }); setPage(1); }}
-            // Props para seleção
+            onClearTableFilters={() => { 
+              setTableFilters({ cliente: '', passeio: '', dataPasseio: '' }); 
+              setPage(1); 
+            }}
             selectedSales={selectedSales}
             onSelectSale={handleSelectSale}
             onSelectAll={handleSelectAll}
           />
 
           <div className="px-4 pb-4">
-            <Pagination page={page} totalPages={totalPages} totalItems={filteredSales.length}
-              onPageChange={setPage} />
+            <Pagination 
+              page={page} 
+              totalPages={totalPages} 
+              totalItems={filteredSales.length}
+              onPageChange={setPage} 
+            />
           </div>
         </div>
       </div>

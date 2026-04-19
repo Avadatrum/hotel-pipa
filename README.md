@@ -1,6 +1,8 @@
 
 ```
 hotel-pipa
+├─ .firebase
+│  └─ hosting.ZGlzdA.cache
 ├─ .firebaserc
 ├─ eslint.config.js
 ├─ firebase.json
@@ -55,6 +57,7 @@ hotel-pipa
 │  │  │  ├─ GlobalFilters.tsx
 │  │  │  ├─ Pagination.tsx
 │  │  │  ├─ PaymentModal.tsx
+│  │  │  ├─ PeriodControl.tsx
 │  │  │  ├─ PromotionFormModal.tsx
 │  │  │  ├─ PromotionsList.tsx
 │  │  │  ├─ SalesRegister.tsx
@@ -70,6 +73,15 @@ hotel-pipa
 │  │  ├─ Footer.tsx
 │  │  ├─ Layout.tsx
 │  │  ├─ LossesPanel.tsx
+│  │  ├─ lostAndFound
+│  │  │  ├─ Lostandfoundstats.tsx
+│  │  │  ├─ LostItemFilters.tsx
+│  │  │  ├─ LostItemForm.tsx
+│  │  │  ├─ LostItemLabel.tsx
+│  │  │  ├─ LostItemModal.tsx
+│  │  │  ├─ LostItemsTable.tsx
+│  │  │  ├─ StatusBadge.tsx
+│  │  │  └─ WhatsAppButton.tsx
 │  │  ├─ ProtectedRoute.tsx
 │  │  ├─ serviceOrders
 │  │  │  ├─ OSCharts.tsx
@@ -93,6 +105,7 @@ hotel-pipa
 │  ├─ contexts
 │  │  ├─ AuthContext.tsx
 │  │  ├─ CommissionContext.tsx
+│  │  ├─ LostAndFoundContext.tsx
 │  │  ├─ OSContext.tsx
 │  │  ├─ PaymentContext.tsx
 │  │  └─ ThemeContext.tsx
@@ -100,6 +113,7 @@ hotel-pipa
 │  │  ├─ useApartmentActions.ts
 │  │  ├─ useApartments.ts
 │  │  ├─ useFirestore.ts
+│  │  ├─ useLostAndFound.ts
 │  │  ├─ useNavigation.ts
 │  │  ├─ usePermission.ts
 │  │  ├─ useServiceOrders.ts
@@ -119,6 +133,12 @@ hotel-pipa
 │  │  ├─ DocumentsPage.tsx
 │  │  ├─ LoginPage.tsx
 │  │  ├─ LogPage.tsx
+│  │  ├─ lostAndFound
+│  │  │  ├─ LostAndFoundLayout.tsx
+│  │  │  ├─ LostAndFoundListPage.tsx
+│  │  │  ├─ LostAndFoundReportsPage.tsx
+│  │  │  └─ LostAndFoundScanPage.tsx
+│  │  ├─ LostAndFoundPage.tsx
 │  │  ├─ PublicOSPage.tsx
 │  │  ├─ PublicTourPage.tsx
 │  │  ├─ ReceiptsPage.tsx
@@ -137,6 +157,7 @@ hotel-pipa
 │  │  ├─ authService.ts
 │  │  ├─ communicationTourService.ts
 │  │  ├─ firebase.ts
+│  │  ├─ lostAndFoundService.ts
 │  │  ├─ seedService.ts
 │  │  ├─ serviceOrderService.ts
 │  │  ├─ storageService.ts
@@ -146,6 +167,7 @@ hotel-pipa
 │  ├─ types
 │  │  ├─ commission.types.ts
 │  │  ├─ index.ts
+│  │  ├─ lostAndFound.types.ts
 │  │  ├─ serviceOrder.types.ts
 │  │  └─ tabuaMare.types.ts
 │  └─ utils

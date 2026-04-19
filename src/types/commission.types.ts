@@ -75,9 +75,11 @@ export interface Sale {
   paymentObservations?: string;
   
   // 🆕 CAMPOS DE ARQUIVAMENTO E PERÍODO
-  periodoComissao?: string; // 🆕 Formato: "2024-01"
-  arquivado?: boolean; // 🆕
-  dataArquivamento?: any; // 🆕
+  periodoComissao?: string; // Formato: "2024-01"
+  arquivado?: boolean;
+  dataArquivamento?: any;
+  arquivadoPor?: string; // 🆕
+  arquivadoPorNome?: string; // 🆕
   
   createdAt?: any;
   updatedAt?: any;

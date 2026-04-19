@@ -42,6 +42,7 @@ export function Layout() {
     { id: 'apts', label: 'Apartamentos', icon: '🏨', path: '/' },
     { id: 'os', label: 'Ordens de Serviço', icon: '🔧', path: '/os' },
     { id: 'commissions', label: 'Comissões', icon: '💰', path: '/comissoes' },
+    { id: 'lostAndFound', label: 'Achados & Perdidos', icon: '🔍', path: '/achados-e-perdidos' }, // ← CORRIGIDO: path em português
     { id: 'log', label: 'Histórico', icon: '📋', path: '/historico' },
     { id: 'recibos', label: 'Recibos', icon: '🧾', path: '/recibos' },
     { id: 'documentos', label: 'Documentos', icon: '📁', path: '/documentos' },
@@ -106,7 +107,10 @@ export function Layout() {
         {/* Navegação */}
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
           {navItems.map(item => {
-            const isActive = location.pathname === item.path;
+            const isActive = location.pathname === item.path || 
+                           (item.path === '/achados-e-perdidos' && location.pathname.startsWith('/achados-e-perdidos')) ||
+                           (item.path === '/os' && location.pathname.startsWith('/os')) ||
+                           (item.path === '/comissoes' && location.pathname.startsWith('/comissoes'));
             return (
               <button
                 key={item.id}

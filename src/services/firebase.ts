@@ -1,8 +1,9 @@
 // src/services/firebase.ts
 import { initializeApp } from 'firebase/app';
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore'; // Removidos conectores de emulador não usados
-import { getAuth } from 'firebase/auth'; // Removido connectAuthEmulator
-import { getFunctions } from 'firebase/functions'; // Removido connectFunctionsEmulator
+import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import { getFunctions } from 'firebase/functions';
+import { getStorage } from 'firebase/storage'; // ← ADICIONE ESTA LINHA
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBHxPaxpzS-3BE165zcTSP-XDkMi0tG4GM",
@@ -17,6 +18,7 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const functions = getFunctions(app);
+export const storage = getStorage(app); // ← ADICIONE ESTA LINHA
 
 // Habilitar persistência offline
 enableIndexedDbPersistence(db).catch((err) => {

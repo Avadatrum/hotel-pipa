@@ -9,7 +9,8 @@ import './styles/index.css';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './hooks/useToast';
 import { AuthProvider } from './contexts/AuthContext';
-import { OSProvider } from './contexts/OSContext'; // <--- Adicionei aqui
+import { OSProvider } from './contexts/OSContext';
+import { LostAndFoundProvider } from './contexts/LostAndFoundContext'; // 🆕 Importação adicionada
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -19,10 +20,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <ToastProvider>
         {/* 3. Auth controla o acesso, então geralmente vem antes dos dados de negócio */}
         <AuthProvider>
-          {/* 4. OSProvider fornece os dados para as rotas abaixo */}
-          <OSProvider>
-            <RouterProvider router={router} />
-          </OSProvider>
+          {/* 4. LostAndFoundProvider fornece dados de achados e perdidos */}
+          <LostAndFoundProvider>
+            {/* 5. OSProvider fornece os dados para as rotas abaixo */}
+            <OSProvider>
+              <RouterProvider router={router} />
+            </OSProvider>
+          </LostAndFoundProvider>
         </AuthProvider>
       </ToastProvider>
     </ThemeProvider>
