@@ -74,6 +74,8 @@ hotel-pipa
 │  │  ├─ Layout.tsx
 │  │  ├─ LossesPanel.tsx
 │  │  ├─ lostAndFound
+│  │  │  ├─ ImageGallery.tsx
+│  │  │  ├─ ItemImage.tsx
 │  │  │  ├─ Lostandfoundstats.tsx
 │  │  │  ├─ LostItemFilters.tsx
 │  │  │  ├─ LostItemForm.tsx

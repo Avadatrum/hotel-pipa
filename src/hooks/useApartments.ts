@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../services/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { useAuth } from '../contexts/AuthContext'; // ADICIONADO: Contexto de Autenticação
 import type { Apartment } from '../types';
 
 // Lista de todos os apartamentos do hotel
@@ -45,11 +46,21 @@ const defaultApartment: Apartment = {
 
 // Hook personalizado para gerenciar os apartamentos
 export function useApartments() {
-  // Estado que guarda todos os apartamentos
   const [apartments, setApartments] = useState<Record<number, Apartment>>({});
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth(); // ADICIONADO: Hook de autenticação
 
   useEffect(() => {
+    // SÓ CARREGA SE TIVER USUÁRIO AUTENTICADO
+    if (!user) {
+      console.log('⏸️ useApartments: Usuário não autenticado. Aguardando...');
+      setApartments({}); // Limpa os dados ao sair
+      setLoading(false);
+      return;
+    }
+
+    console.log('🔄 useApartments: Usuário autenticado. Iniciando escuta...');
+
     // Vamos escutar mudanças em cada apartamento
     const unsubscribes: (() => void)[] = [];
 
@@ -58,38 +69,47 @@ export function useApartments() {
       const aptRef = doc(db, 'apartments', String(aptNumber));
       
       // Escuta mudanças em tempo real
-      const unsubscribe = onSnapshot(aptRef, (docSnapshot) => {
-        if (docSnapshot.exists()) {
-          // Se o documento existe, usa os dados
-          const data = docSnapshot.data() as Apartment;
-          setApartments(prev => ({
-            ...prev,
-            [aptNumber]: {
-              ...data,
-              block: blockMap[aptNumber] // adiciona o bloco
-            }
-          }));
-        } else {
-          // Se não existe, cria com dados padrão
-          setApartments(prev => ({
-            ...prev,
-            [aptNumber]: {
-              ...defaultApartment,
-              block: blockMap[aptNumber]
-            }
-          }));
+      const unsubscribe = onSnapshot(
+        aptRef, 
+        (docSnapshot) => {
+          if (docSnapshot.exists()) {
+            // Se o documento existe, usa os dados
+            const data = docSnapshot.data() as Apartment;
+            setApartments(prev => ({
+              ...prev,
+              [aptNumber]: {
+                ...data,
+                block: blockMap[aptNumber] // adiciona o bloco
+              }
+            }));
+          } else {
+            // Se não existe, cria com dados padrão
+            setApartments(prev => ({
+              ...prev,
+              [aptNumber]: {
+                ...defaultApartment,
+                block: blockMap[aptNumber]
+              }
+            }));
+          }
+          setLoading(false);
+        },
+        (error) => {
+          // ADICIONADO: Tratamento de erro (ex: permissões negadas)
+          console.error(`❌ Erro ao carregar apartamento ${aptNumber}:`, error);
+          // Não setamos loading false aqui para não interromper se falhar apenas um
         }
-        setLoading(false);
-      });
+      );
       
       unsubscribes.push(unsubscribe);
     });
 
-    // Quando o componente desmontar, para de escutar
+    // Quando o componente desmontar ou o usuário sair, para de escutar
     return () => {
+      console.log('🛑 useApartments: Limpando listeners...');
       unsubscribes.forEach(unsubscribe => unsubscribe());
     };
-  }, []); // Array vazio = executa só uma vez
+  }, [user]); // ADICIONADO: user como dependência
 
   return { apartments, loading };
 }

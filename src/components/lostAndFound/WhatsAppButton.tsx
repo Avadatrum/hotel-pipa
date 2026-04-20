@@ -3,15 +3,12 @@
 import React from 'react';
 import type { LostItem } from '../../types/lostAndFound.types';
 
+// O parâmetro phoneNumber foi removido das Props e da função
 interface WhatsAppButtonProps {
   item: LostItem;
-  phoneNumber?: string;
 }
 
-export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
-  item,
-  phoneNumber = '5584999999999',
-}) => {
+export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({ item }) => {
   const handleSend = () => {
     const message =
       `*HOTEL PIPA – ACHADOS E PERDIDOS*\n\n` +
@@ -25,7 +22,8 @@ export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
       `📞 *Telefone:* ${item.deliveredByPhone || 'Não informado'}\n` +
       `📌 *Status:* ${item.status === 'guardado' ? '🔵 AGUARDANDO RETIRADA' : '✅ ENTREGUE'}`;
 
-    window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
+    // 🎯 NOVO: Sem número definido - abre a tela de seleção de contato
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   return (

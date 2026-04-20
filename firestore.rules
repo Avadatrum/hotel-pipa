@@ -1,8 +1,55 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Coleção de usuários (para login)
+    match /users/{userId} {
+      // Qualquer pessoa pode ler a lista de usuários (para o login funcionar)
+      allow read: if true;
+      // Apenas admins podem escrever
+      allow write: if request.auth != null && request.auth.token.role == 'admin';
+    }
+    
+    // Apartments - apenas usuários autenticados
+    match /apartments/{apartment} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Logs - apenas usuários autenticados podem ler/escrever
+    match /log/{document} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Losses - apenas usuários autenticados
+    match /losses/{document} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Service Orders - apenas usuários autenticados
+    match /serviceOrders/{order} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Lost and Found - leitura pública, escrita autenticada
+    match /lostAndFound/{item} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Tours/Passeios - leitura pública, escrita autenticada
+    match /tours/{tour} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Comissões - apenas usuários autenticados
+    match /commissions/{commission} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Regra padrão para outras coleções
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
   }
 }

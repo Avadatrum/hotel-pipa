@@ -8,7 +8,7 @@ import {
   signOut as firebaseSignOut
 } from 'firebase/auth';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, addDoc } from 'firebase/firestore'; 
 import { auth, db } from '../services/firebase';
 import { setCurrentUser } from '../services/apartmentService';
 import { loginUser } from '../services/authService';
@@ -40,6 +40,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
+        console.log('🔥 Firebase User autenticado:', firebaseUser.email);
+        
+        // IMPORTANTE: Aguardar o token estar disponível
+        await firebaseUser.getIdToken(true);
+        
         // Buscar dados do Firestore pelo email
         const usersRef = collection(db, 'users');
         const q = query(usersRef, where('email', '==', firebaseUser.email));
@@ -55,19 +60,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: userDoc.id,
             name: userData.name || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário',
             email: firebaseUser.email || '',
-            role: userData.role || 'operator',
+            role: (userData.role as 'admin' | 'operator') || 'operator',
             createdAt: userData.createdAt || new Date().toISOString()
           };
+          
+          console.log('✅ Dados do usuário carregados:', userInfo);
         } else {
-          // Usuário existe no Auth mas não no Firestore - criar documento
-          console.log('📝 Criando documento do usuário no Firestore...');
-          userInfo = {
-            id: firebaseUser.uid,
+          // Se não encontrou no Firestore, criar automaticamente
+          console.log('📝 Usuário não encontrado no Firestore, criando...');
+          
+          const newUser = {
             name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário',
             email: firebaseUser.email || '',
-            role: 'operator',
-            createdAt: new Date().toISOString()
+            role: 'operator' as const, 
+            createdAt: new Date().toISOString(),
+            createdBy: 'system'
           };
+          
+          const docRef = await addDoc(collection(db, 'users'), newUser);
+          
+          userInfo = {
+            id: docRef.id,
+            ...newUser
+          };
+          
+          console.log('✅ Usuário criado no Firestore:', userInfo);
         }
         
         setUser(userInfo);
@@ -78,7 +95,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await refreshUsers();
         }
         
-        console.log('✅ Usuário carregado:', userInfo.email);
       } catch (error) {
         console.error('❌ Erro ao carregar usuário do Firestore:', error);
         setUser(null);
@@ -101,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: document.id, 
           name: data.name,
           email: data.email,
-          role: data.role,
+          role: (data.role as 'admin' | 'operator'),
           createdAt: data.createdAt
         } as User);
       });
@@ -118,7 +134,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     try {
       // 1. Primeiro, validar no Firestore (seu sistema customizado)
-      const loggedUser = await loginUser(email, password);
+      // ✅ CORREÇÃO: Apenas chama a função para validar (lança erro se senha errada)
+      // Não precisa armazenar o resultado pois o estado é gerenciado pelo listener acima
+      await loginUser(email, password);
       console.log('✅ Usuário validado no Firestore');
       
       // 2. Tentar autenticar no Firebase Auth
@@ -140,10 +158,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       }
-      
-      setUser(loggedUser);
-      localStorage.setItem('hotel_user', JSON.stringify(loggedUser));
-      setCurrentUser(loggedUser.id, loggedUser.name);
       
       console.log('✅ Login completo!');
     } catch (error) {

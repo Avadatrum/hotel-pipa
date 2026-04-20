@@ -51,7 +51,9 @@ const InfoRow: React.FC<{ label: string; value?: string | null; className?: stri
 export const LostItemModal: React.FC<LostItemModalProps> = ({ item, onClose, onEdit }) => {
   const handleWhatsApp = () => {
     const msg = `*HOTEL PIPA – ACHADOS E PERDIDOS*\n\n🆔 *Código:* ${item.uniqueCode}\n📅 *Data:* ${item.foundDate.toLocaleDateString('pt-BR')}\n🏷️ *Categoria:* ${categoryLabels[item.category] || item.category}\n📝 *Descrição:* ${item.description}\n${item.color ? `🎨 *Cor:* ${item.color}\n` : ''}📍 *Local:* ${item.foundLocation}\n👤 *Entregue por:* ${item.deliveredBy}`;
-    window.open(`https://wa.me/5584999999999?text=${encodeURIComponent(msg)}`, '_blank');
+    
+    // 🎯 MODIFICADO: Abre WhatsApp sem número fixo - usuário escolhe o contato
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   return (

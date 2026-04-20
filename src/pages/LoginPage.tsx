@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/useToast';
 import { Footer } from '../components/Footer';
+import { auth } from '../services/firebase'; // Importação adicionada
 import { 
   Waves, 
   Umbrella, 
@@ -35,6 +36,17 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
+      
+      // AGUARDAR O TOKEN ESTAR DISPONÍVEL
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Verificar se o usuário está realmente autenticado
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        await currentUser.getIdToken(true);
+        console.log('✅ Token obtido com sucesso');
+      }
+      
       showToast('Bem-vindo de volta! 🌴', 'success');
       navigate('/');
     } catch (error) {

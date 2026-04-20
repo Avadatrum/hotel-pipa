@@ -8,6 +8,7 @@ import { LostItemModal } from '../components/lostAndFound/LostItemModal';
 import { LostItemLabel } from '../components/lostAndFound/LostItemLabel';
 import { LostItemFilters } from '../components/lostAndFound/LostItemFilters';
 import { LostAndFoundStats } from '../components/lostAndFound/Lostandfoundstats';
+import { BatchLabelPrint } from '../components/lostAndFound/BatchLabelPrint';
 import type { LostItem } from '../types/lostAndFound.types';
 
 export const LostAndFoundPage: React.FC = () => {
@@ -29,6 +30,7 @@ export const LostAndFoundPage: React.FC = () => {
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [returnName, setReturnName] = useState('');
   const [showLabelModal, setShowLabelModal] = useState(false);
+  const [showBatchPrint, setShowBatchPrint] = useState(false);
 
   const handleCreateItem = async (data: any) => {
     await createItem(data);
@@ -66,7 +68,8 @@ export const LostAndFoundPage: React.FC = () => {
 
   const handleSendWhatsApp = (item: LostItem) => {
     const message = `*HOTEL PIPA – ACHADOS E PERDIDOS*\n\n🆔 *Código:* ${item.uniqueCode}\n📅 *Data:* ${item.foundDate.toLocaleDateString('pt-BR')}\n🏷️ *Categoria:* ${item.category}\n📝 *Descrição:* ${item.description}\n${item.color ? `🎨 *Cor:* ${item.color}\n` : ''}📍 *Local:* ${item.foundLocation}\n👤 *Entregue por:* ${item.deliveredBy}\n📌 *Status:* ${item.status === 'guardado' ? '🔵 AGUARDANDO RETIRADA' : '✅ ENTREGUE'}`;
-    window.open(`https://wa.me/5584999999999?text=${encodeURIComponent(message)}`, '_blank');
+    
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const storedCount = items.filter(i => i.status === 'guardado').length;
@@ -86,6 +89,8 @@ export const LostAndFoundPage: React.FC = () => {
             Gerencie itens encontrados no hotel
           </p>
         </div>
+        
+        {/* Botão Cadastrar Item (Botão de lote removido daqui) */}
         <button
           onClick={() => { setSelectedItem(null); setShowForm(true); }}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-600/20 transition-all duration-200"
@@ -103,8 +108,23 @@ export const LostAndFoundPage: React.FC = () => {
         discarded={discardedCount}
       />
 
-      {/* Filters */}
-      <LostItemFilters filters={filters} onFilterChange={setFilters} />
+      {/* Filters + Botão Imprimir em Lote */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex-1">
+          <LostItemFilters filters={filters} onFilterChange={setFilters} />
+        </div>
+        
+        {/* Botão Imprimir em Lote - Agora ao lado dos filtros */}
+        {items.filter(i => i.status === 'guardado').length > 0 && (
+          <button
+            onClick={() => setShowBatchPrint(true)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-sm font-semibold rounded-xl shadow-lg shadow-emerald-600/20 transition-all duration-200 whitespace-nowrap"
+          >
+            <span className="text-base">🖨️</span>
+            Imprimir em Lote
+          </button>
+        )}
+      </div>
 
       {/* Table */}
       {loading ? (
@@ -216,7 +236,7 @@ export const LostAndFoundPage: React.FC = () => {
       {/* ── Modal: Etiqueta para Impressão ── */}
       {showLabelModal && selectedItem && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm border border-slate-200 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
               <h2 className="text-lg font-bold text-slate-800 dark:text-white">🖨️ Imprimir Etiqueta</h2>
               <button
@@ -227,10 +247,21 @@ export const LostAndFoundPage: React.FC = () => {
               </button>
             </div>
             <div className="p-6">
-              <LostItemLabel item={selectedItem} />
+              <LostItemLabel 
+                item={selectedItem} 
+                onClose={() => setShowLabelModal(false)}
+              />
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Modal: Impressão em Lote ── */}
+      {showBatchPrint && (
+        <BatchLabelPrint
+          items={items}
+          onClose={() => setShowBatchPrint(false)}
+        />
       )}
     </div>
   );

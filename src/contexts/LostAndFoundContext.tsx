@@ -37,23 +37,27 @@ export const LostAndFoundProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const { user } = useAuth();
   const { showToast } = useToast();
 
-  // CARREGAR ITENS AUTOMATICAMENTE AO INICIAR
+  // CARREGAR ITENS AUTOMATICAMENTE AO INICIAR (OU QUANDO USUÁRIO MUDAR)
   useEffect(() => {
-    if (user) {
-      console.log('🔄 Carregando itens automaticamente...');
-      loadItems();
-    }
-  }, [user]); // Recarrega quando o usuário mudar
-
-  const loadItems = useCallback(async () => {
     if (!user) {
-      console.log('⚠️ Usuário não autenticado, não é possível carregar itens');
+      console.log('⏸️ Aguardando autenticação para carregar itens...');
+      setItems([]); 
       return;
     }
     
+    console.log('🔄 Usuário autenticado. Carregando itens...');
+    loadItems();
+  }, [user]);
+
+  const loadItems = useCallback(async () => {
+    if (!user) {
+      console.log('⚠️ Usuário não autenticado, cancelando carregamento.');
+      return;
+    }
+
     setLoading(true);
     try {
-      console.log('📦 Buscando itens do Firestore...');
+      console.log('📦 Buscando itens do Firestore com filtros:', filters);
       const fetchedItems = await lostAndFoundService.getLostItems(filters);
       console.log(`✅ ${fetchedItems.length} itens carregados`);
       setItems(fetchedItems);
@@ -75,10 +79,7 @@ export const LostAndFoundProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const newItem = await lostAndFoundService.createLostItem(data, user.id);
       showToast(`Item ${newItem.uniqueCode} cadastrado com sucesso!`, 'success');
       
-      // Atualizar lista local imediatamente (sem recarregar tudo)
       setItems(prevItems => [newItem, ...prevItems]);
-      
-      // Também recarregar para garantir consistência
       await loadItems();
       
       return newItem;
@@ -89,7 +90,6 @@ export const LostAndFoundProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  // ✅ FUNÇÃO CORRIGIDA (Tipagem de Array)
   const updateItem = async (id: string, data: Partial<LostItem>, photo?: File) => {
     console.log('📝 Context: Atualizando item', { id, hasPhoto: !!photo });
     
@@ -97,18 +97,15 @@ export const LostAndFoundProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // 🆕 REMOVER campos de arquivo e IDs antes de enviar para o Firestore
       const { photo: photoField, photos: photosField, photoURL, id: itemId, createdAt, ...updateData } = data as any;
       
-      // 🛠️ CORREÇÃO: Transformar File único em Array File[] para o serviço
-      const photosArray = photo ? [photo] : undefined;
-
-      // Chamar serviço APENAS com dados textuais e o array de fotos
-      await lostAndFoundService.updateLostItem(id, updateData, photosArray);
+      // ✅ CORREÇÃO APLICADA: Envia o 'photo' diretamente para o serviço
+      await lostAndFoundService.updateLostItem(id, updateData, photo);
       
       showToast('Item atualizado com sucesso!', 'success');
       
-      // Aguardar o Firestore processar
+      // Aguardar o Firestore processar a propagação dos dados
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Recarregar lista
+      // Recarregar lista para refletir mudanças
       await loadItems();
       
     } catch (error) {
@@ -122,10 +119,7 @@ export const LostAndFoundProvider: React.FC<{ children: React.ReactNode }> = ({ 
       await lostAndFoundService.deleteLostItem(id);
       showToast('Item removido com sucesso!', 'success');
       
-      // Remover item localmente imediatamente
       setItems(prevItems => prevItems.filter(item => item.id !== id));
-      
-      // Também recarregar para garantir
       await loadItems();
     } catch (error) {
       console.error('Error deleting item:', error);

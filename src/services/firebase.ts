@@ -18,6 +18,13 @@ const app = initializeApp(firebaseConfig);
 
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+
+// ADICIONE ESTE LINHA PARA DEBUG:
+if (import.meta.env.DEV) {
+  // @ts-ignore
+  window.auth = auth;
+}
+
 export const functions = getFunctions(app);
 export const storage = getStorage(app);
 

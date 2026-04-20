@@ -1,4 +1,4 @@
-//src/contexts/OSContext.tsx
+// src/contexts/OSContext.tsx
 import { createContext, useContext, type ReactNode, useState, useEffect } from 'react';
 import { type ServiceOrder } from '../types/serviceOrder.types';
 import { useServiceOrders } from '../hooks/useServiceOrders';
@@ -19,14 +19,22 @@ const OSContext = createContext<OSContextType | undefined>(undefined);
 
 export function OSProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  // O useServiceOrders já possui a lógica de proteção !user implementada anteriormente
   const { orders, loading, refreshOrders } = useServiceOrders();
+  
   const [showNotification, setShowNotification] = useState(false);
   const [lastCreatedOrder, setLastCreatedOrder] = useState<ServiceOrder | null>(null);
   
-  // Sincronizar usuário atual com o serviço de OS
+  // Sincronizar usuário atual com o serviço de OS e Limpar estado ao sair
   useEffect(() => {
     if (user) {
       setOSCurrentUser(user.id, user.name);
+      console.log('✅ OSContext: Usuário sincronizado:', user.name);
+    } else {
+      // Limpar estados sensíveis ao fazer logout
+      setLastCreatedOrder(null);
+      setShowNotification(false);
+      console.log('🧹 OSContext: Estados limpos por falta de usuário.');
     }
   }, [user]);
   
