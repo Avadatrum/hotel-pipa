@@ -27,9 +27,9 @@ export function CommissionDashboard() {
   const { showToast } = useToast();
   const isAdmin = user?.role === 'admin';
 
-  // 🆕 Estado do Período Atual (AGORA USADO!)
+  // 🆕 Estado do Período Atual
   const [periodoAtual, setPeriodoAtual] = useState(() => {
-    return getCurrentQuinzena(); // Formato "2024-01-1"
+    return getCurrentQuinzena();
   });
 
   // Filtros
@@ -354,10 +354,10 @@ export function CommissionDashboard() {
     setPage(1);
   };
 
-  // 🔥 Handler para mudança de período (AGORA setPeriodoAtual É USADO!)
+  // Handler para mudança de período
   const handlePeriodChange = (newPeriod: string) => {
     setPeriodoAtual(newPeriod);
-    setPage(1); // Resetar paginação ao mudar de período
+    setPage(1); 
   };
 
   if (loading) {
@@ -429,12 +429,24 @@ export function CommissionDashboard() {
             <p className="text-sm text-gray-500">{(sales || []).length} vendas no total</p>
           </div>
           <div className="flex gap-2">
+            {/* 🆕 Botão de Pagamento - só aparece quando há vendas selecionadas */}
+            {selectedSales.size > 0 && (
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
+              >
+                <span>💰</span>
+                Pagar {selectedSales.size} venda(s) • {formatCurrency(totalSelectedAmount)}
+              </button>
+            )}
+            
             <button 
               onClick={handleExportCSV}
               className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               Exportar CSV
             </button>
+            
             {isAdmin && filteredSales.length > 0 && (
               <button 
                 onClick={() => setShowDeleteAllModal(true)} 
@@ -447,14 +459,14 @@ export function CommissionDashboard() {
           </div>
         </div>
 
-        {/* 🆕 Controle de Período - AGORA COM O HANDLER CORRETO */}
+        {/* Controle de Período */}
         <PeriodControl
           currentPeriod={periodoAtual}
-          onPeriodChange={handlePeriodChange} // 🔥 AQUI usa setPeriodoAtual!
+          onPeriodChange={handlePeriodChange}
           onArchiveComplete={refreshData}
         />
 
-        {/* Cards de Status - NOVO */}
+        {/* Cards de Status */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="bg-orange-50 dark:bg-orange-900/20 rounded-2xl p-4 border border-orange-200 dark:border-orange-800">
             <div className="flex items-center gap-2 mb-2">

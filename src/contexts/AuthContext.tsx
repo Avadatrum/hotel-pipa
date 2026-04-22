@@ -1,17 +1,15 @@
 // src/contexts/AuthContext.tsx
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { 
-  onAuthStateChanged, 
+import {
+  onAuthStateChanged,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signOut as firebaseSignOut
 } from 'firebase/auth';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { collection, getDocs, query, where, addDoc } from 'firebase/firestore'; 
+import { collection, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 import { setCurrentUser } from '../services/apartmentService';
-import { loginUser } from '../services/authService';
 import type { User } from '../types';
 
 interface AuthContextType {
@@ -41,21 +39,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         console.log('🔥 Firebase User autenticado:', firebaseUser.email);
-        
-        // IMPORTANTE: Aguardar o token estar disponível
+
         await firebaseUser.getIdToken(true);
-        
+
         // Buscar dados do Firestore pelo email
         const usersRef = collection(db, 'users');
         const q = query(usersRef, where('email', '==', firebaseUser.email));
         const usersSnapshot = await getDocs(q);
-        
+
         let userInfo: User;
-        
+
         if (!usersSnapshot.empty) {
           const userDoc = usersSnapshot.docs[0];
           const userData = userDoc.data();
-          
+
           userInfo = {
             id: userDoc.id,
             name: userData.name || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário',
@@ -63,38 +60,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: (userData.role as 'admin' | 'operator') || 'operator',
             createdAt: userData.createdAt || new Date().toISOString()
           };
-          
+
           console.log('✅ Dados do usuário carregados:', userInfo);
         } else {
-          // Se não encontrou no Firestore, criar automaticamente
+          // Usuário existe no Auth mas não no Firestore — criar registro
           console.log('📝 Usuário não encontrado no Firestore, criando...');
-          
+
           const newUser = {
             name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário',
             email: firebaseUser.email || '',
-            role: 'operator' as const, 
+            role: 'operator' as const,
             createdAt: new Date().toISOString(),
             createdBy: 'system'
           };
-          
+
           const docRef = await addDoc(collection(db, 'users'), newUser);
-          
-          userInfo = {
-            id: docRef.id,
-            ...newUser
-          };
-          
+          userInfo = { id: docRef.id, ...newUser };
+
           console.log('✅ Usuário criado no Firestore:', userInfo);
         }
-        
+
         setUser(userInfo);
         setCurrentUser(userInfo.id, userInfo.name);
         localStorage.setItem('hotel_user', JSON.stringify(userInfo));
-        
+
         if (userInfo.role === 'admin') {
           await refreshUsers();
         }
-        
+
       } catch (error) {
         console.error('❌ Erro ao carregar usuário do Firestore:', error);
         setUser(null);
@@ -107,19 +100,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshUsers = async () => {
-    console.log('📝 Atualizando lista de usuários...');
     try {
       const usersSnapshot = await getDocs(collection(db, 'users'));
-      const userList: User[] = [];
-      usersSnapshot.forEach((document) => {
+      const userList: User[] = usersSnapshot.docs.map((document) => {
         const data = document.data();
-        userList.push({ 
-          id: document.id, 
+        return {
+          id: document.id,
           name: data.name,
           email: data.email,
-          role: (data.role as 'admin' | 'operator'),
-          createdAt: data.createdAt
-        } as User);
+          role: data.role as 'admin' | 'operator',
+          createdAt: data.createdAt,
+        };
       });
       console.log('✅ Usuários carregados:', userList.length);
       setUsers(userList);
@@ -131,38 +122,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     console.log('🔐 Iniciando login...');
     setLoading(true);
-    
+
     try {
-      // 1. Primeiro, validar no Firestore (seu sistema customizado)
-      // ✅ CORREÇÃO: Apenas chama a função para validar (lança erro se senha errada)
-      // Não precisa armazenar o resultado pois o estado é gerenciado pelo listener acima
-      await loginUser(email, password);
-      console.log('✅ Usuário validado no Firestore');
-      
-      // 2. Tentar autenticar no Firebase Auth
-      try {
-        console.log('🔐 Tentando Firebase Auth...');
-        await signInWithEmailAndPassword(auth, email, password);
-        console.log('✅ Autenticado no Firebase Auth');
-      } catch (authError: any) {
-        console.warn('⚠️ Usuário não encontrado no Auth, criando...', authError.code);
-        
-        // Se o erro for "user not found", criar o usuário
-        if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential') {
-          try {
-            await createUserWithEmailAndPassword(auth, email, password);
-            console.log('✅ Usuário criado no Firebase Auth!');
-          } catch (createError: any) {
-            console.error('❌ Erro ao criar usuário no Auth:', createError.code);
-            // Não falhar o login por causa do Auth
-          }
-        }
-      }
-      
-      console.log('✅ Login completo!');
-    } catch (error) {
-      console.error('❌ Erro no login:', error);
-      throw new Error('Email ou senha inválidos');
+      // ✅ FLUXO CORRETO: Firebase Auth é a fonte da verdade
+      // Se a senha estiver errada, lança exceção aqui e para tudo.
+      await signInWithEmailAndPassword(auth, email, password);
+      console.log('✅ Login no Firebase Auth realizado com sucesso');
+      // O onAuthStateChanged acima cuida do resto (buscar dados no Firestore)
+
+    } catch (error: any) {
+      console.error('❌ Erro no login:', error.code);
+
+      // Traduzir erros do Firebase para mensagens amigáveis em PT-BR
+      const messages: Record<string, string> = {
+        'auth/invalid-credential':  'E-mail ou senha incorretos.',
+        'auth/user-not-found':      'Nenhum usuário encontrado com este e-mail.',
+        'auth/wrong-password':      'Senha incorreta. Tente novamente.',
+        'auth/invalid-email':       'Formato de e-mail inválido.',
+        'auth/user-disabled':       'Este usuário foi desativado. Fale com o administrador.',
+        'auth/too-many-requests':   'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
+        'auth/network-request-failed': 'Sem conexão com a internet. Verifique sua rede.',
+      };
+
+      const message = messages[error.code] ?? 'Erro ao fazer login. Tente novamente.';
+      throw new Error(message);
+
     } finally {
       setLoading(false);
     }
@@ -182,15 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = user?.role === 'admin';
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      loading,
-      login,
-      logout,
-      isAdmin,
-      users,
-      refreshUsers,
-    }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, users, refreshUsers }}>
       {children}
     </AuthContext.Provider>
   );
@@ -198,8 +174,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 }

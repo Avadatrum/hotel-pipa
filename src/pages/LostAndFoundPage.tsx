@@ -1,268 +1,320 @@
-// src/pages/LostAndFoundPage.tsx
+// src/pages/lostAndFound/LostAndFoundScanPage.tsx
 
-import React, { useState } from 'react';
-import { useLostAndFound } from '../contexts/LostAndFoundContext';
-import { LostItemForm } from '../components/lostAndFound/LostItemForm';
-import { LostItemsTable } from '../components/lostAndFound/LostItemsTable';
-import { LostItemModal } from '../components/lostAndFound/LostItemModal';
-import { LostItemLabel } from '../components/lostAndFound/LostItemLabel';
-import { LostItemFilters } from '../components/lostAndFound/LostItemFilters';
-import { LostAndFoundStats } from '../components/lostAndFound/Lostandfoundstats';
-import { BatchLabelPrint } from '../components/lostAndFound/BatchLabelPrint';
-import type { LostItem } from '../types/lostAndFound.types';
+import React, { useEffect, useRef, useState } from 'react';
+import { Html5Qrcode, Html5QrcodeSupportedFormats, Html5QrcodeScannerState } from 'html5-qrcode';
+import { useNavigate } from 'react-router-dom';
 
-export const LostAndFoundPage: React.FC = () => {
-  const {
-    items,
-    loading,
-    createItem,
-    updateItem,
-    deleteItem,
-    markAsReturned,
-    markAsDiscarded,
-    filters,
-    setFilters
-  } = useLostAndFound();
+export const LostAndFoundScanPage: React.FC = () => {
+  const navigate = useNavigate();
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [hasError, setHasError] = useState<string | null>(null);
+  const [currentFacingMode, setCurrentFacingMode] = useState<'environment' | 'user'>('environment');
+  const isStoppingRef = useRef(false);
+  const isMountedRef = useRef(true);
 
-  const [showForm, setShowForm] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<LostItem | null>(null);
-  const [showDetail, setShowDetail] = useState(false);
-  const [showReturnModal, setShowReturnModal] = useState(false);
-  const [returnName, setReturnName] = useState('');
-  const [showLabelModal, setShowLabelModal] = useState(false);
-  const [showBatchPrint, setShowBatchPrint] = useState(false);
-
-  const handleCreateItem = async (data: any) => {
-    await createItem(data);
-    setShowForm(false);
-  };
-
-  const handleEditItem = async (data: any) => {
-    if (selectedItem) {
-      await updateItem(selectedItem.id, data);
-      setSelectedItem(null);
-      setShowForm(false);
-    }
-  };
-
-  const handleReturnItem = async () => {
-    if (selectedItem && returnName) {
-      await markAsReturned(selectedItem.id, returnName);
-      setShowReturnModal(false);
-      setSelectedItem(null);
-      setReturnName('');
-    }
-  };
-
-  const handleDiscardItem = async (item: LostItem) => {
-    if (confirm(`Descartar o item ${item.uniqueCode}?`)) {
-      await markAsDiscarded(item.id);
-    }
-  };
-
-  const handleDeleteItem = async (item: LostItem) => {
-    if (confirm(`Excluir permanentemente o item ${item.uniqueCode}? Esta ação não pode ser desfeita.`)) {
-      await deleteItem(item.id);
-    }
-  };
-
-  const handleSendWhatsApp = (item: LostItem) => {
-    const message = `*HOTEL PIPA – ACHADOS E PERDIDOS*\n\n🆔 *Código:* ${item.uniqueCode}\n📅 *Data:* ${item.foundDate.toLocaleDateString('pt-BR')}\n🏷️ *Categoria:* ${item.category}\n📝 *Descrição:* ${item.description}\n${item.color ? `🎨 *Cor:* ${item.color}\n` : ''}📍 *Local:* ${item.foundLocation}\n👤 *Entregue por:* ${item.deliveredBy}\n📌 *Status:* ${item.status === 'guardado' ? '🔵 AGUARDANDO RETIRADA' : '✅ ENTREGUE'}`;
+  useEffect(() => {
+    isMountedRef.current = true;
     
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+    const initScanner = async () => {
+      try {
+        // Verifica se já existe uma instância e limpa
+        if (scannerRef.current) {
+          try {
+            await scannerRef.current.clear();
+          } catch (e) {
+            // Ignora erro de clear
+          }
+        }
+
+        // Cria uma nova instância
+        const scanner = new Html5Qrcode('qr-reader');
+        scannerRef.current = scanner;
+
+        const config = {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+        };
+
+        await scanner.start(
+          { facingMode: currentFacingMode },
+          config,
+          async (decodedText: string) => {
+            // 🎯 VERIFICA SE JÁ ESTÁ PARANDO
+            if (isStoppingRef.current || !isMountedRef.current) {
+              console.log('⏹️ Scanner já está parando, ignorando leitura');
+              return;
+            }
+
+            // Sucesso na leitura
+            console.log('✅ QR Code lido:', decodedText);
+            
+            // Marca que está parando para evitar múltiplas chamadas
+            isStoppingRef.current = true;
+            
+            // 🎯 PARA O SCANNER DE FORMA SEGURA
+            if (scannerRef.current && isMountedRef.current) {
+              try {
+                // Verifica o estado atual do scanner
+                const state = scannerRef.current.getState();
+                if (state === Html5QrcodeScannerState.SCANNING) {
+                  await scannerRef.current.stop();
+                }
+              } catch (error) {
+                console.warn('⚠️ Erro ao parar scanner após leitura:', error);
+              }
+            }
+            
+            // Navega para o item
+            if (isMountedRef.current) {
+              navigate(`/achados-e-perdidos?code=${decodedText}`);
+            }
+          },
+          (errorMessage: string) => {
+            // Ignora erros normais durante o scanning
+            if (!errorMessage.includes('NotFoundException')) {
+              console.warn('⚠️ Erro no scanner:', errorMessage);
+            }
+          }
+        );
+        
+        if (isMountedRef.current) {
+          setIsScanning(true);
+          setHasError(null);
+        }
+      } catch (err) {
+        console.error('❌ Erro ao iniciar scanner:', err);
+        if (isMountedRef.current) {
+          setIsScanning(false);
+          setHasError('Não foi possível acessar a câmera. Verifique as permissões.');
+        }
+      }
+    };
+
+    // Pequeno delay para garantir que o DOM está pronto
+    const timer = setTimeout(() => {
+      if (isMountedRef.current) {
+        initScanner();
+      }
+    }, 100);
+
+    // 🎯 CLEANUP CORRIGIDO
+    return () => {
+      isMountedRef.current = false;
+      clearTimeout(timer);
+      
+      // Só tenta parar se não estiver já parando
+      if (!isStoppingRef.current && scannerRef.current) {
+        isStoppingRef.current = true;
+        
+        scannerRef.current.stop()
+          .then(() => {
+            return scannerRef.current?.clear();
+          })
+          .catch((err) => {
+            // Só loga se não for o erro esperado
+            if (err && !err.message?.includes('not running')) {
+              console.warn('⚠️ Erro no cleanup do scanner:', err);
+            }
+          })
+          .finally(() => {
+            scannerRef.current = null;
+            setIsScanning(false);
+          });
+      } else {
+        scannerRef.current = null;
+        setIsScanning(false);
+      }
+    };
+  }, [navigate, currentFacingMode]);
+
+  // 🆕 Função segura para trocar câmera
+  const handleSwitchCamera = async () => {
+    if (!scannerRef.current || isStoppingRef.current) return;
+    
+    try {
+      const cameras = await Html5Qrcode.getCameras();
+      if (cameras && cameras.length > 1) {
+        isStoppingRef.current = true;
+        
+        const currentState = scannerRef.current.getState();
+        if (currentState === Html5QrcodeScannerState.SCANNING) {
+          await scannerRef.current.stop();
+          await scannerRef.current.clear();
+        }
+        
+        // Alterna entre as câmeras
+        const newFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+        setCurrentFacingMode(newFacingMode);
+        
+        // Reinicia o scanner
+        const scanner = new Html5Qrcode('qr-reader');
+        scannerRef.current = scanner;
+        
+        const config = {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+        };
+        
+        await scanner.start(
+          { facingMode: newFacingMode },
+          config,
+          async (decodedText: string) => {
+            if (isStoppingRef.current || !isMountedRef.current) return;
+            
+            isStoppingRef.current = true;
+            console.log('✅ QR Code lido:', decodedText);
+            
+            try {
+              if (scannerRef.current) {
+                const state = scannerRef.current.getState();
+                if (state === Html5QrcodeScannerState.SCANNING) {
+                  await scannerRef.current.stop();
+                }
+              }
+            } catch (error) {
+              console.warn('Erro ao parar scanner:', error);
+            }
+            
+            if (isMountedRef.current) {
+              navigate(`/achados-e-perdidos?code=${decodedText}`);
+            }
+          },
+          (errorMessage: string) => {
+            if (!errorMessage.includes('NotFoundException')) {
+              console.warn('Erro no scanner:', errorMessage);
+            }
+          }
+        );
+        
+        isStoppingRef.current = false;
+        setIsScanning(true);
+      } else {
+        console.log('📱 Apenas uma câmera disponível');
+      }
+    } catch (err) {
+      console.error('Erro ao trocar câmera:', err);
+      isStoppingRef.current = false;
+      setHasError('Erro ao trocar câmera. Tente novamente.');
+    }
   };
 
-  const storedCount = items.filter(i => i.status === 'guardado').length;
-  const returnedCount = items.filter(i => i.status === 'entregue').length;
-  const discardedCount = items.filter(i => i.status === 'descartado').length;
+  // 🆕 Função para entrada manual
+  const handleManualEntry = () => {
+    const code = prompt('Digite o código do item (ex: ACH-24-00001):');
+    if (code?.trim()) {
+      isStoppingRef.current = true;
+      navigate(`/achados-e-perdidos?code=${code.trim()}`);
+    }
+  };
+
+  // Função para voltar
+  const handleGoBack = () => {
+    isStoppingRef.current = true;
+    navigate('/achados-e-perdidos');
+  };
 
   return (
-    <div className="space-y-6">
-
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
-            🔍 Achados & Perdidos
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4">
+      <div className="max-w-md mx-auto">
+        {/* Header */}
+        <div className="mb-6">
+          <button
+            onClick={handleGoBack}
+            className="mb-4 text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2"
+          >
+            <span>←</span> Voltar para lista
+          </button>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
+            📷 Escanear QR Code
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Gerencie itens encontrados no hotel
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Aponte a câmera para o QR Code da etiqueta
           </p>
         </div>
-        
-        {/* Botão Cadastrar Item (Botão de lote removido daqui) */}
-        <button
-          onClick={() => { setSelectedItem(null); setShowForm(true); }}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-600/20 transition-all duration-200"
-        >
-          <span className="text-base">＋</span>
-          Cadastrar Item
-        </button>
-      </div>
 
-      {/* Stats Cards */}
-      <LostAndFoundStats
-        total={items.length}
-        stored={storedCount}
-        returned={returnedCount}
-        discarded={discardedCount}
-      />
-
-      {/* Filters + Botão Imprimir em Lote */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        <div className="flex-1">
-          <LostItemFilters filters={filters} onFilterChange={setFilters} />
+        {/* Scanner Container */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden">
+          {hasError ? (
+            <div className="w-full aspect-square flex items-center justify-center p-6 bg-red-50 dark:bg-red-950/20">
+              <div className="text-center">
+                <p className="text-red-600 dark:text-red-400 mb-4">❌ {hasError}</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Tentar novamente
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div 
+              ref={containerRef}
+              id="qr-reader" 
+              className="w-full aspect-square"
+              style={{ minHeight: '300px' }}
+            />
+          )}
         </div>
-        
-        {/* Botão Imprimir em Lote - Agora ao lado dos filtros */}
-        {items.filter(i => i.status === 'guardado').length > 0 && (
-          <button
-            onClick={() => setShowBatchPrint(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-sm font-semibold rounded-xl shadow-lg shadow-emerald-600/20 transition-all duration-200 whitespace-nowrap"
-          >
-            <span className="text-base">🖨️</span>
-            Imprimir em Lote
-          </button>
+
+        {/* Status do Scanner */}
+        {!hasError && !isScanning && (
+          <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-xl text-center">
+            <p className="text-sm text-yellow-800 dark:text-yellow-400">
+              ⚠️ Inicializando câmera...
+            </p>
+          </div>
         )}
+
+        {/* Badge da câmera atual */}
+        {isScanning && (
+          <div className="mt-4 text-center">
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-xs text-slate-600 dark:text-slate-400">
+              📷 Câmera {currentFacingMode === 'environment' ? 'Traseira' : 'Frontal'}
+            </span>
+          </div>
+        )}
+
+        {/* Instruções */}
+        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-xl">
+          <h3 className="font-semibold text-blue-800 dark:text-blue-400 mb-2">
+            ℹ️ Como usar:
+          </h3>
+          <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+            <li>• Posicione o QR Code no centro da câmera</li>
+            <li>• Mantenha o código bem iluminado</li>
+            <li>• A leitura é automática</li>
+          </ul>
+        </div>
+
+        {/* Opções */}
+        <div className="mt-4 space-y-2">
+          <div className="text-center">
+            <button
+              onClick={handleManualEntry}
+              className="text-sm text-slate-500 dark:text-slate-400 underline"
+            >
+              Ou digite o código manualmente
+            </button>
+          </div>
+
+          {/* Botão para trocar câmera */}
+          <div className="text-center">
+            <button
+              onClick={handleSwitchCamera}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!isScanning}
+            >
+              🔄 Trocar câmera
+            </button>
+          </div>
+        </div>
       </div>
-
-      {/* Table */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20 text-slate-400 dark:text-slate-500">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm font-medium">Carregando itens...</span>
-          </div>
-        </div>
-      ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-slate-400 dark:text-slate-500">
-          <span className="text-5xl mb-4">📦</span>
-          <p className="text-base font-semibold">Nenhum item encontrado</p>
-          <p className="text-sm mt-1">Tente ajustar os filtros ou cadastre um novo item.</p>
-        </div>
-      ) : (
-        <LostItemsTable
-          items={items}
-          onView={(item) => { setSelectedItem(item); setShowDetail(true); }}
-          onEdit={(item) => { setSelectedItem(item); setShowForm(true); }}
-          onReturn={(item) => { setSelectedItem(item); setShowReturnModal(true); }}
-          onDiscard={handleDiscardItem}
-          onDelete={handleDeleteItem}
-          onPrintLabel={(item) => { setSelectedItem(item); setShowLabelModal(true); }}
-          onSendWhatsApp={handleSendWhatsApp}
-        />
-      )}
-
-      {/* ── Modal: Formulário ── */}
-      {showForm && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white">
-                {selectedItem ? '✏️ Editar Item' : '📋 Novo Item'}
-              </h2>
-              <button
-                onClick={() => { setShowForm(false); setSelectedItem(null); }}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-6">
-              <LostItemForm
-                onSubmit={selectedItem ? handleEditItem : handleCreateItem}
-                onCancel={() => { setShowForm(false); setSelectedItem(null); }}
-                initialData={selectedItem as any}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Modal: Detalhes ── */}
-      {showDetail && selectedItem && (
-        <LostItemModal
-          item={selectedItem}
-          onClose={() => { setShowDetail(false); setSelectedItem(null); }}
-          onEdit={() => { setShowDetail(false); setShowForm(true); }}
-        />
-      )}
-
-      {/* ── Modal: Confirmar Entrega ── */}
-      {showReturnModal && selectedItem && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white">📦 Confirmar Entrega</h2>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-4 border border-blue-100 dark:border-blue-900">
-                <p className="text-sm font-mono font-bold text-blue-700 dark:text-blue-400">{selectedItem.uniqueCode}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{selectedItem.description}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                  Nome de quem retirou *
-                </label>
-                <input
-                  type="text"
-                  value={returnName}
-                  onChange={(e) => setReturnName(e.target.value)}
-                  autoFocus
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                  placeholder="Nome completo"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 p-6 pt-0">
-              <button
-                onClick={() => { setShowReturnModal(false); setSelectedItem(null); setReturnName(''); }}
-                className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleReturnItem}
-                disabled={!returnName.trim()}
-                className="px-4 py-2 text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              >
-                ✓ Confirmar Entrega
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Modal: Etiqueta para Impressão ── */}
-      {showLabelModal && selectedItem && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white">🖨️ Imprimir Etiqueta</h2>
-              <button
-                onClick={() => setShowLabelModal(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-6">
-              <LostItemLabel 
-                item={selectedItem} 
-                onClose={() => setShowLabelModal(false)}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Modal: Impressão em Lote ── */}
-      {showBatchPrint && (
-        <BatchLabelPrint
-          items={items}
-          onClose={() => setShowBatchPrint(false)}
-        />
-      )}
     </div>
   );
 };

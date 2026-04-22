@@ -1,6 +1,7 @@
 // src/pages/lostAndFound/LostAndFoundListPage.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom'; // 🆕 Import para ler parâmetros da URL
 import { useLostAndFound } from '../../contexts/LostAndFoundContext';
 import { LostItemForm } from '../../components/lostAndFound/LostItemForm';
 import { LostItemsTable } from '../../components/lostAndFound/LostItemsTable';
@@ -24,6 +25,7 @@ export const LostAndFoundListPage: React.FC = () => {
     loadItems,
   } = useLostAndFound();
 
+  const [searchParams, setSearchParams] = useSearchParams(); // 🆕 Hook para ler URL params
   const [showForm, setShowForm] = useState(false);
   const [selectedItem, setSelectedItem] = useState<LostItem | null>(null);
   const [showDetail, setShowDetail] = useState(false);
@@ -33,6 +35,57 @@ export const LostAndFoundListPage: React.FC = () => {
   
   // Estado para forçar refresh da tabela
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  // 🆕 Ref para evitar múltiplas aberturas do mesmo item
+  const lastOpenedCodeRef = useRef<string | null>(null);
+
+  // 🆕 EFEITO PARA CAPTURAR O QR CODE DA URL
+  useEffect(() => {
+    const codeFromUrl = searchParams.get('code');
+    
+    if (codeFromUrl && codeFromUrl !== lastOpenedCodeRef.current) {
+      console.log('🔍 Código detectado na URL:', codeFromUrl);
+      
+      // Procura o item na lista atual
+      const foundItem = items.find(item => item.uniqueCode === codeFromUrl);
+      
+      if (foundItem) {
+        console.log('✅ Item encontrado:', foundItem);
+        lastOpenedCodeRef.current = codeFromUrl;
+        setSelectedItem(foundItem);
+        setShowDetail(true);
+        
+        // Limpa o parâmetro da URL para evitar reabertura em refresh
+        searchParams.delete('code');
+        setSearchParams(searchParams, { replace: true });
+      } else {
+        console.warn('⚠️ Item não encontrado na lista atual. Aguardando carregamento...');
+        
+        // Tenta carregar os itens novamente (caso a lista ainda não tenha carregado)
+        if (!loading && items.length === 0) {
+          loadItems().then(() => {
+            // Após carregar, tenta encontrar novamente
+            setTimeout(() => {
+              const refreshedItem = items.find(item => item.uniqueCode === codeFromUrl);
+              if (refreshedItem) {
+                console.log('✅ Item encontrado após refresh:', refreshedItem);
+                lastOpenedCodeRef.current = codeFromUrl;
+                setSelectedItem(refreshedItem);
+                setShowDetail(true);
+                searchParams.delete('code');
+                setSearchParams(searchParams, { replace: true });
+              } else {
+                console.error('❌ Item não encontrado:', codeFromUrl);
+                alert(`Item com código ${codeFromUrl} não encontrado.`);
+                searchParams.delete('code');
+                setSearchParams(searchParams, { replace: true });
+              }
+            }, 500);
+          });
+        }
+      }
+    }
+  }, [searchParams, items, loading, loadItems, setSearchParams]);
 
   const handleCreateItem = async (data: any) => {
     await createItem(data);
@@ -92,7 +145,7 @@ export const LostAndFoundListPage: React.FC = () => {
     const { id, photos, ...rest } = item;
     
     // Omitimos 'photos' pois converter URLs (strings) para File Objects requer assincronicidade/fetch
-    // e pode quebrar o fluxo de initialização síncrona. 
+    // e pode quebrar o fluxo de inicialização síncrona. 
     // O formulário deve lidar com a exibição das fotos existentes via outra prop ou lógica interna,
     // ou aceitar que photos virá undefined na edição inicial.
     return {
@@ -115,6 +168,15 @@ export const LostAndFoundListPage: React.FC = () => {
           title="Recarregar lista"
         >
           🔄 Atualizar
+        </button>
+
+        {/* 🆕 Botão para Scanner */}
+        <button
+          onClick={() => window.location.href = '/achados-e-perdidos/scanner'}
+          className="inline-flex items-center gap-2 px-3 py-2.5 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white text-sm font-medium rounded-xl shadow-lg shadow-purple-600/20 transition-all duration-200"
+        >
+          <span className="text-base">📷</span>
+          Scanner
         </button>
 
         <button
