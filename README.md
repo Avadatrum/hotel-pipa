@@ -169,6 +169,7 @@ hotel-pipa
 │  │  └─ index.css
 │  ├─ types
 │  │  ├─ commission.types.ts
+│  │  ├─ html5-qrcode.d.ts
 │  │  ├─ index.ts
 │  │  ├─ lostAndFound.types.ts
 │  │  ├─ serviceOrder.types.ts

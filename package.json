@@ -11,6 +11,7 @@
     "seed": "node --import=tsx scripts/seedTours.js"
   },
   "dependencies": {
+    "@types/uuid": "^10.0.0",
     "@yudiel/react-qr-scanner": "^2.5.1",
     "autoprefixer": "^10.4.27",
     "bcryptjs": "^3.0.3",
@@ -30,6 +31,7 @@
     "react-router-dom": "^7.13.2",
     "react-to-print": "^3.3.0",
     "tailwindcss": "^3.4.19",
+    "uuid": "^14.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

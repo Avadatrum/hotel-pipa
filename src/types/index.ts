@@ -52,3 +52,18 @@ export type {
 
 // 🆕 Adicione esta linha
 export * from './lostAndFound.types';
+
+export interface TowelSignature {
+  id?: string;
+  aptNumber: number;
+  guestName: string;
+  token: string;
+  operation: 'chips_to_towels' | 'towel_exchange';
+  quantity: number;
+  signature: string; // base64 da assinatura
+  signedAt: string; // ISO date
+  expiresAt: string; // token expira em 15 minutos
+  used: boolean;
+  wasCleared?: boolean; // NOVO: indica se a assinatura foi limpa no checkout
+  clearedAt?: string; // NOVO: quando foi limpa
+}

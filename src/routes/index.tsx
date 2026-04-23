@@ -49,6 +49,9 @@ import { ServiceOrderReports } from '../pages/serviceOrders/ServiceOrderReports'
 import { useServiceOrders } from '../hooks/useServiceOrders';
 import type { ServiceOrder } from '../types/serviceOrder.types';
 
+// Adicionar no routes/index.tsx:
+import { PublicTowelSignaturePage } from '../pages/PublicTowelSignaturePage';
+
 // Wrapper para a lista de OS com lógica de modais
 function ServiceOrderListPage() {
   const { orders, loading } = useServiceOrders();
@@ -114,6 +117,10 @@ export const router = createBrowserRouter([
   {
     path: '/passeio/:tourId',
     element: <PublicTourPage />,
+  },
+  {
+    path: '/toalha/:aptNumber/:token',
+    element: <PublicTowelSignaturePage />,
   },
   {
     path: '/',

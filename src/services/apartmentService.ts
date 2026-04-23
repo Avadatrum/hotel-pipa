@@ -4,6 +4,9 @@ import { db } from './firebase';
 import type { Apartment } from '../types';
 import { addWithAudit } from './auditService';
 
+// Onde faz o checkout, adicione:
+import { clearSignaturesOnCheckout } from './towelService';
+
 // Variável global para armazenar o usuário atual (será setada no AuthContext)
 let currentUserId = '';
 let currentUserName = '';
@@ -68,6 +71,9 @@ export async function doCheckout(aptNumber: number, lostTowels: number) {
     await addLoss(aptNumber, aptData.block, aptData.guest || '', lostTowels);
   }
   
+  // Dentro da função de checkout:
+  await clearSignaturesOnCheckout(aptNumber);
+
   // Limpa o apartamento
   await updateApartment(aptNumber, {
     occupied: false,
