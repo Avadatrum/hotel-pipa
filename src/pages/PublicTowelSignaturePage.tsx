@@ -21,29 +21,34 @@ export function PublicTowelSignaturePage() {
   }, [aptNumber, token]);
 
   useEffect(() => {
-    setupCanvas();
-  }, []);
+    if (!loading && !error && !success) {
+      setupCanvas();
+    }
+    
+    const resizeObserver = new ResizeObserver(() => handleResize());
+    if (canvasRef.current) resizeObserver.observe(canvasRef.current.parentElement!);
+
+    return () => resizeObserver.disconnect();
+  }, [loading, error, success]);
 
   const loadToken = async () => {
     if (!aptNumber || !token) {
-      setError('Link inválido');
+      setError('Link de acesso inválido ou incompleto.');
       setLoading(false);
       return;
     }
 
     try {
       const data = await validateToken(parseInt(aptNumber), token);
-      
       if (!data) {
-        setError('QR Code inválido ou expirado');
+        setError('Este QR Code já foi utilizado ou expirou.');
         setLoading(false);
         return;
       }
-
       setSignatureData(data);
-      setLoading(false);
     } catch (err: any) {
-      setError('Erro de conexão');
+      setError('Não foi possível conectar ao servidor.');
+    } finally {
       setLoading(false);
     }
   };
@@ -51,200 +56,204 @@ export function PublicTowelSignaturePage() {
   const setupCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * 2;
-    canvas.height = rect.height * 2;
-    ctx.scale(2, 2);
+    canvas.width = rect.width;
+    canvas.height = rect.height;
     
-    ctx.strokeStyle = '#1e40af';
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#1e293b'; // Slate 800
+    ctx.lineWidth = 3;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const handleResize = () => {
+    const canvas = canvasRef.current;
+    if (!canvas || !hasSignature) {
+        setupCanvas();
+        return;
+    }
+    // Salva o conteúdo atual antes de redimensionar para não perder a assinatura
+    const tempImage = canvas.toDataURL();
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    
+    const img = new Image();
+    img.src = tempImage;
+    img.onload = () => {
+      ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+      // Garante que o estilo da linha se mantenha
+      if (ctx) {
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+      }
+    };
   };
 
   const getCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
-
     const rect = canvas.getBoundingClientRect();
     
-    if ('touches' in e) {
-      return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top
-      };
-    }
-    
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      x: clientX - rect.left,
+      y: clientY - rect.top
     };
   };
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
+    const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
-
     const coords = getCoordinates(e);
     ctx.beginPath();
     ctx.moveTo(coords.x, coords.y);
     setIsDrawing(true);
-    setHasSignature(true);
   };
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
     if (!isDrawing) return;
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
+    const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
-
     const coords = getCoordinates(e);
     ctx.lineTo(coords.x, coords.y);
     ctx.stroke();
+    setHasSignature(true);
   };
 
-  const stopDrawing = () => {
-    setIsDrawing(false);
-  };
+  const stopDrawing = () => setIsDrawing(false);
 
   const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setupCanvas();
     setHasSignature(false);
   };
 
   const handleSave = async () => {
     if (!hasSignature || !aptNumber || !token || saving) return;
-
     setSaving(true);
     setSaveError('');
     
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const signatureBase64 = canvas.toDataURL('image/png');
-    
     try {
-      const result = await saveSignature(parseInt(aptNumber), token, signatureBase64);
+      const signatureBase64 = canvasRef.current?.toDataURL('image/png');
+      const result = await saveSignature(parseInt(aptNumber), token, signatureBase64!);
       
-      if (result.success) {
-        setSuccess(true);
-      } else {
-        setSaveError(result.error || 'Erro ao salvar');
-      }
+      if (result.success) setSuccess(true);
+      else setSaveError(result.error || 'Erro ao processar assinatura.');
     } catch (err: any) {
-      setSaveError('Erro ao salvar: ' + err.message);
+      setSaveError('Erro de conexão com o servidor.');
+    } finally {
+      setSaving(false);
     }
-    
-    setSaving(false);
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="text-5xl mb-4 animate-bounce">🧺</div>
-          <p className="text-gray-600 text-lg">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
+  // --- RENDERS ---
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-red-50 to-white flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full text-center">
-          <div className="text-6xl mb-4">😕</div>
-          <h2 className="text-xl font-bold text-gray-800 mb-3">Ops!</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="w-full px-6 py-3 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-700 transition-colors"
-          >
-            Tentar novamente
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+      <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+      <p className="text-slate-600 font-medium animate-pulse">Elevando sua experiência...</p>
+    </div>
+  );
 
-  if (success) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full text-center">
-          <div className="text-6xl mb-4">✅</div>
-          <h2 className="text-xl font-bold text-green-800 mb-3">
-            Assinatura Registrada!
-          </h2>
-          <div className="bg-green-50 rounded-xl p-4 mb-4">
-            <p className="text-green-700 font-medium">{signatureData?.guestName}</p>
-            <p className="text-green-600 text-sm mt-1">
-              Apartamento {signatureData?.aptNumber}
-            </p>
-          </div>
-          <p className="text-gray-500 text-sm">Obrigado! Pode fechar esta página.</p>
-        </div>
+  if (error) return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-xl p-8 max-w-sm w-full text-center border border-slate-100">
+        <div className="text-5xl mb-4">⚠️</div>
+        <h2 className="text-xl font-bold text-slate-800 mb-2">Acesso Negado</h2>
+        <p className="text-slate-500 mb-6 leading-relaxed">{error}</p>
+        <button onClick={() => window.location.reload()} className="w-full py-3 bg-slate-800 text-white rounded-xl font-semibold hover:bg-slate-900 transition-all">
+          Tentar Novamente
+        </button>
       </div>
-    );
-  }
+    </div>
+  );
+
+  if (success) return (
+    <div className="min-h-screen bg-emerald-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-xl p-8 max-w-sm w-full text-center border border-emerald-100">
+        <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">✓</div>
+        <h2 className="text-2xl font-bold text-slate-800 mb-1">Confirmado!</h2>
+        <p className="text-slate-500 mb-6">Sua assinatura foi registrada com sucesso.</p>
+        <div className="bg-slate-50 rounded-2xl p-4 mb-6 text-left">
+          <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Hóspede</p>
+          <p className="text-slate-700 font-semibold">{signatureData?.guestName}</p>
+          <p className="text-slate-500 text-sm">Apartamento {signatureData?.aptNumber}</p>
+        </div>
+        <p className="text-xs text-slate-400">Você já pode fechar esta aba com segurança.</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-4">
-      <div className="max-w-md mx-auto">
-        <div className="bg-white rounded-t-2xl shadow-lg p-6 border-b">
-          <div className="text-center mb-3">
-            <span className="text-5xl">🧺</span>
-          </div>
-          <h1 className="text-2xl font-bold text-center text-gray-800">
-            Hotel da Pipa
-          </h1>
-          <p className="text-center text-gray-500 text-sm mt-1">
-            Registro de Toalhas
-          </p>
-        </div>
+    <div className="min-h-screen bg-slate-50 pb-10">
+      {/* Header com Logo */}
+      <div className="bg-white px-6 pt-8 pb-6 text-center shadow-sm">
+        <img 
+          src="https://i.imgur.com/A4vP7cE.png" 
+          alt="Hotel Logo" 
+          className="h-16 mx-auto mb-4 object-contain"
+        />
+        <h1 className="text-xl font-bold text-slate-800 uppercase tracking-tight">Registro de Toalhas</h1>
+      </div>
 
-        {signatureData && (
-          <div className="bg-blue-500 text-white p-5">
-            <p className="text-lg font-medium">{signatureData.guestName}</p>
-            <p className="text-blue-100 text-sm mt-1">
-              Apartamento {signatureData.aptNumber}
-            </p>
-            <div className="mt-3 bg-blue-400 rounded-lg p-3">
-              <p className="text-sm font-medium">
-                {signatureData.operation === 'chips_to_towels' 
-                  ? `Retirada: ${signatureData.quantity} toalha(s)`
-                  : `Troca: ${signatureData.quantity} toalha(s)`
-                }
-              </p>
+      <div className="max-w-md mx-auto px-4 -mt-4">
+        {/* Info Card */}
+        <div className="bg-blue-600 rounded-2xl shadow-lg p-5 text-white mb-4 relative overflow-hidden">
+          <div className="relative z-10">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <p className="text-blue-100 text-xs uppercase font-bold">Hóspede</p>
+                <h2 className="text-xl font-bold">{signatureData?.guestName}</h2>
+              </div>
+              <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-lg">
+                <span className="text-sm font-bold font-mono">APT {signatureData?.aptNumber}</span>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3 bg-black/10 rounded-xl p-3 border border-white/10">
+              <span className="text-2xl">
+                {signatureData?.operation === 'chips_to_towels' ? '🧺' : '🔄'}
+              </span>
+              <div>
+                <p className="text-xs text-blue-100 leading-none mb-1">Operação</p>
+                <p className="font-bold">
+                   {signatureData?.operation === 'chips_to_towels' ? 'Retirada' : 'Troca'} de {signatureData?.quantity} unidades
+                </p>
+              </div>
             </div>
           </div>
-        )}
+          {/* Círculo decorativo ao fundo */}
+          <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full"></div>
+        </div>
 
-        <div className="bg-white border-x border-gray-200 p-5">
-          <label className="block text-sm font-medium text-gray-700 mb-3">
-            ✍️ Assine no campo abaixo:
-          </label>
-          <div className="border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 relative overflow-hidden">
+        {/* Canvas Card */}
+        <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
+          <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+            <span className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <span className="animate-pulse">✍️</span> Assine no campo abaixo
+            </span>
+            {hasSignature && (
+              <button onClick={clearCanvas} className="text-xs font-bold text-red-500 uppercase tracking-wider hover:text-red-700 transition-colors">
+                Limpar
+              </button>
+            )}
+          </div>
+          
+          <div className="relative bg-slate-50 h-64">
             <canvas
               ref={canvasRef}
-              className="w-full h-56 touch-none"
+              className="w-full h-full touch-none"
               onMouseDown={startDrawing}
               onMouseMove={draw}
               onMouseUp={stopDrawing}
@@ -254,37 +263,39 @@ export function PublicTowelSignaturePage() {
               onTouchEnd={stopDrawing}
             />
             {!hasSignature && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <p className="text-gray-400 text-sm">Toque aqui para assinar</p>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-40">
+                <p className="text-slate-400 text-sm">Use o dedo ou caneta touch</p>
               </div>
             )}
           </div>
-          
-          {hasSignature && (
+
+          <div className="p-4 bg-slate-50/50">
             <button
-              onClick={clearCanvas}
-              className="mt-3 text-sm text-red-600 hover:text-red-800 font-medium"
+              onClick={handleSave}
+              disabled={!hasSignature || saving}
+              className={`w-full py-4 rounded-xl font-bold text-lg shadow-md transition-all flex items-center justify-center gap-2
+                ${!hasSignature || saving 
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' 
+                  : 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98]'}`}
             >
-              ✕ Limpar
+              {saving ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Salvando...
+                </>
+              ) : (
+                'Confirmar Entrega'
+              )}
             </button>
-          )}
-        </div>
-
-        {saveError && (
-          <div className="bg-red-50 border border-red-200 p-3 text-center">
-            <p className="text-sm text-red-600">{saveError}</p>
+            {saveError && (
+              <p className="text-red-500 text-xs text-center mt-3 font-medium">{saveError}</p>
+            )}
           </div>
-        )}
-
-        <div className="bg-white rounded-b-2xl shadow-lg p-5 border-t">
-          <button
-            onClick={handleSave}
-            disabled={!hasSignature || saving}
-            className="w-full bg-green-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-green-700 disabled:opacity-50 transition-all"
-          >
-            {saving ? 'Registrando...' : '✅ Confirmar Assinatura'}
-          </button>
         </div>
+
+        <p className="text-center text-slate-400 text-[10px] mt-6 uppercase tracking-widest">
+           • Hotel da Pipa - Controle de Toalhas
+        </p>
       </div>
     </div>
   );

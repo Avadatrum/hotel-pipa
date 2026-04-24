@@ -85,7 +85,7 @@ export async function saveSignature(
       return { success: false, error: 'Token inválido ou expirado' };
     }
 
-    // 🆕 Pegar config do Firebase já inicializado
+    // Pegar config do Firebase já inicializado
     const config = getFirebaseConfig();
     const { apiKey, projectId } = config;
     
@@ -196,4 +196,55 @@ export async function getSignatureHistory(aptNumber: number): Promise<TowelSigna
   const snapshot = await getDocs(q);
   
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as TowelSignature));
+}
+
+// Limpar TODAS as assinaturas de TODOS os apartamentos (admin)
+export async function clearAllSignatures(): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    const allApts = [1,2,3,4,5,6,7,8,10,11,12,21,22,23,24,25,26,27,28,29,31,32,33,34,35,41,42,43,44,45,46,47];
+    const { writeBatch, collection, getDocs, query, where } = await import('firebase/firestore');
+    
+    let totalCleared = 0;
+    
+    for (const apt of allApts) {
+      const colRef = collection(db, 'apartments', String(apt), 'towelSignatures');
+      const q = query(colRef, where('used', '==', true));
+      const snapshot = await getDocs(q);
+      
+      if (snapshot.empty) continue;
+      
+      const batch = writeBatch(db);
+      
+      snapshot.docs.forEach(docSnap => {
+        batch.update(docSnap.ref, {
+          signature: '', // limpa a imagem base64
+          clearedAt: new Date().toISOString(),
+          wasCleared: true
+        });
+        totalCleared++;
+      });
+      
+      await batch.commit();
+    }
+    
+    // Registra no log
+    const currentUser = auth.currentUser;
+    const { addDoc } = await import('firebase/firestore');
+    await addDoc(collection(db, 'log'), {
+      time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      date: new Date().toLocaleDateString('pt-BR'),
+      apt: 0, // 0 = todos
+      msg: `🗑️ ADMIN: ${totalCleared} assinatura(s) de toalhas limpas manualmente`,
+      type: 'other',
+      ts: Date.now(),
+      userId: currentUser?.uid || 'sistema',
+      userName: currentUser?.displayName || 'Admin'
+    });
+    
+    return { success: true, count: totalCleared };
+    
+  } catch (error: any) {
+    console.error('Erro ao limpar assinaturas:', error);
+    return { success: false, count: 0, error: error.message };
+  }
 }

@@ -1,5 +1,5 @@
-// src/components/ApartmentCard.tsx - VERSÃO ATUALIZADA
-import { useState } from 'react';
+// src/components/ApartmentCard.tsx
+import { useState, useCallback, memo } from 'react';
 import type { Apartment } from '../types';
 import { useApartmentActions } from '../hooks/useApartmentActions';
 import { useToast } from '../hooks/useToast';
@@ -17,19 +17,47 @@ import { EditPhoneModal } from './apartment/EditPhoneModal';
 import { LanguageSelectionModal } from './apartment/LanguageSelectionModal';
 import { TowelSignatureModal } from './apartment/TowelSignatureModal';
 
+// ─── Tipos ────────────────────────────────────────────────────────────────────
+
+type Language = 'pt' | 'es' | 'en';
+
+interface CheckinData {
+  guestName: string;
+  pax: number;
+  phone: string;
+  countryCode: string;
+}
+
+interface TowelData {
+  operation: 'chips_to_towels' | 'towel_exchange';
+  quantity: number;
+}
+
 interface ApartmentCardProps {
   aptNumber: number;
   data: Apartment;
   onSuccess?: () => void;
 }
 
-type Language = 'pt' | 'es' | 'en';
+// ─── Constantes ───────────────────────────────────────────────────────────────
 
-export function ApartmentCard({ aptNumber, data, onSuccess }: ApartmentCardProps) {
+const LANGUAGE_NAMES: Record<Language, string> = {
+  pt: 'Português',
+  es: 'Español',
+  en: 'English',
+};
+
+// ─── Componente ───────────────────────────────────────────────────────────────
+
+export const ApartmentCard = memo(function ApartmentCard({
+  aptNumber,
+  data,
+  onSuccess,
+}: ApartmentCardProps) {
   const { showToast } = useToast();
   const { user } = useAuth();
   const { loading, handleCheckin, handleCheckout, handleAdjust } = useApartmentActions();
-  
+
   // Estados dos modais
   const [showCheckinModal, setShowCheckinModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
@@ -37,250 +65,234 @@ export function ApartmentCard({ aptNumber, data, onSuccess }: ApartmentCardProps
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showEditPhoneModal, setShowEditPhoneModal] = useState(false);
   const [showTowelModal, setShowTowelModal] = useState(false);
-  
-  // Estados auxiliares
-  const [pendingCheckinData, setPendingCheckinData] = useState<any>(null);
-  const [pendingTowelData, setPendingTowelData] = useState<{
-    operation: 'chips_to_towels' | 'towel_exchange';
-    quantity: number;
-  } | null>(null);
 
-  // Handler para confirmar check-in
-  const onCheckinConfirm = async (data: { guestName: string; pax: number; phone: string; countryCode: string }) => {
-    const { guestName, pax, phone } = data;
-    
-    if (phone && phone.trim()) {
-      setPendingCheckinData(data);
-      setShowLanguageModal(true);
-    } else {
-      const result = await handleCheckin(aptNumber, guestName, pax, '');
+  // Estados auxiliares
+  const [pendingCheckinData, setPendingCheckinData] = useState<CheckinData | null>(null);
+  const [pendingTowelData, setPendingTowelData] = useState<TowelData | null>(null);
+
+  // ── Handlers de Check-in ──────────────────────────────────────────────────
+
+  const onCheckinConfirm = useCallback(
+    async (checkinData: CheckinData) => {
+      const { guestName, pax, phone } = checkinData;
+
+      if (phone?.trim()) {
+        setPendingCheckinData(checkinData);
+        setShowLanguageModal(true);
+      } else {
+        const result = await handleCheckin(aptNumber, guestName, pax, '');
+        if (result.success) {
+          showToast(`Check-in realizado! Apto ${aptNumber} — ${guestName}`, 'success');
+          setShowCheckinModal(false);
+          onSuccess?.();
+        } else {
+          showToast(`Erro no check-in: ${result.error}`, 'error');
+        }
+      }
+    },
+    [aptNumber, handleCheckin, onSuccess, showToast],
+  );
+
+  const confirmWithLanguage = useCallback(
+    async (language: Language) => {
+      if (!pendingCheckinData) return;
+
+      const { guestName, pax, phone, countryCode } = pendingCheckinData;
+      const fullPhone = `${countryCode} ${phone}`;
+      const result = await handleCheckin(aptNumber, guestName, pax, fullPhone);
+
       if (result.success) {
-        showToast(`Check-in realizado! Apto ${aptNumber} - ${guestName}`, 'success');
+        showToast(`Check-in realizado! Apto ${aptNumber} — ${guestName}`, 'success');
+
+        if (phone?.trim()) {
+          const fallbackName =
+            language === 'pt'
+              ? 'Equipe Hotel da Pipa'
+              : language === 'es'
+                ? 'Equipo Hotel da Pipa'
+                : 'Hotel da Pipa Team';
+          const userName = user?.name ?? fallbackName;
+          sendWhatsAppMessage(phone, countryCode, guestName, aptNumber, language, userName);
+          showToast(`Mensagem enviada em ${LANGUAGE_NAMES[language]}!`, 'info');
+        }
+
+        setShowLanguageModal(false);
         setShowCheckinModal(false);
+        setPendingCheckinData(null);
         onSuccess?.();
       } else {
         showToast(`Erro no check-in: ${result.error}`, 'error');
       }
-    }
-  };
+    },
+    [aptNumber, handleCheckin, onSuccess, pendingCheckinData, showToast, user?.name],
+  );
 
-  // Handler para confirmar com idioma
-  const confirmWithLanguage = async (language: Language) => {
-    if (!pendingCheckinData) return;
-    
-    const { guestName, pax, phone, countryCode } = pendingCheckinData;
-    const fullPhone = `${countryCode} ${phone}`;
-    const result = await handleCheckin(aptNumber, guestName, pax, fullPhone);
-    
-    if (result.success) {
-      showToast(`Check-in realizado! Apto ${aptNumber} - ${guestName}`, 'success');
-      
-      if (phone && phone.trim()) {
-        const userName = user?.name || (language === 'pt' ? 'Equipe Hotel da Pipa' : language === 'es' ? 'Equipo Hotel da Pipa' : 'Hotel da Pipa Team');
-        sendWhatsAppMessage(phone, countryCode, guestName, aptNumber, language, userName);
-        const languageName = language === 'pt' ? 'Português' : language === 'es' ? 'Español' : 'English';
-        showToast(`Mensagem de boas-vindas enviada (${languageName})!`, 'info');
-      }
-      
-      setShowLanguageModal(false);
-      setShowCheckinModal(false);
-      setPendingCheckinData(null);
-      onSuccess?.();
-    } else {
-      showToast(`Erro no check-in: ${result.error}`, 'error');
-    }
-  };
+  // ── Handler de Check-out ──────────────────────────────────────────────────
 
-  // Handler para check-out
-  const onCheckoutConfirm = async (lostTowelsCount: number) => {
-    const result = await handleCheckout(aptNumber, lostTowelsCount);
-    if (result.success) {
-      if (lostTowelsCount > 0) {
-        showToast(`Check-out realizado! ${lostTowelsCount} toalha(s) registrada(s) como perda`, 'warning');
+  const onCheckoutConfirm = useCallback(
+    async (lostTowelsCount: number) => {
+      const result = await handleCheckout(aptNumber, lostTowelsCount);
+
+      if (result.success) {
+        const msg =
+          lostTowelsCount > 0
+            ? `Check-out realizado! ${lostTowelsCount} toalha(s) registrada(s) como perda`
+            : `Check-out realizado! Apto ${aptNumber} liberado`;
+        showToast(msg, lostTowelsCount > 0 ? 'warning' : 'success');
+        setShowCheckoutModal(false);
+        onSuccess?.();
       } else {
-        showToast(`Check-out realizado! Apto ${aptNumber} liberado`, 'success');
+        const errorMsg = 'error' in result ? result.error : 'Erro desconhecido';
+        showToast(`Erro no check-out: ${errorMsg}`, 'error');
       }
-      setShowCheckoutModal(false);
-      onSuccess?.();
-    } else {
-      const errorMsg = 'error' in result ? result.error : 'Erro desconhecido';
-      showToast(`Erro no check-out: ${errorMsg}`, 'error');
-    }
-  };
+    },
+    [aptNumber, handleCheckout, onSuccess, showToast],
+  );
 
-  // Handler para editar telefone
-  const onEditPhoneConfirm = async (phone: string, countryCode: string) => {
-    const fullPhone = `${countryCode} ${phone}`;
-    const result = await updateApartmentPhone(aptNumber, fullPhone);
-    
-    if (result.success) {
-      showToast(`Telefone atualizado com sucesso!`, 'success');
-      setShowEditPhoneModal(false);
-      
-      if (confirm('Deseja enviar a mensagem de boas-vindas para o novo número?')) {
-        setPendingCheckinData({
-          guestName: data.guest || '',
-          pax: data.pax || 1,
-          phone,
-          countryCode
-        });
-        setShowLanguageModal(true);
+  // ── Handler de Ajuste de Itens ────────────────────────────────────────────
+
+  const onAdjustItem = useCallback(
+    async (item: 'chips' | 'towels', _delta: number) => {
+      const currentValue = item === 'chips' ? data.chips : data.towels;
+
+      if (currentValue <= 0) {
+        showToast('Valor já está em zero', 'error');
+        return;
       }
-      onSuccess?.();
-    } else {
-      showToast(`Erro ao atualizar telefone: ${result.error}`, 'error');
-    }
-  };
 
-  // ApartmentCard.tsx - Lógica onAdjustItem CORRIGIDA
-  const onAdjustItem = async (item: 'chips' | 'towels', delta: number) => {
-    const currentValue = item === 'chips' ? data.chips : data.towels;
-    const newValue = currentValue + delta;
-    
-    // Validações básicas
-    if (newValue < 0) {
-      showToast('Valor não pode ficar negativo', 'error');
-      return;
-    }
-
-    // 1. Entrega de Toalha (+)
-    // O operador clica em "+ Toalha". O sistema entrega.
-    // Se o hóspede tem fichas, o sistema "cobra" uma ficha (ficha -> toalha).
-    if (item === 'towels' && delta > 0) {
-      await handleAdjust(aptNumber, item, delta, currentValue);
-      
-      if (data.chips > 0) {
-        const chipsToRemove = Math.min(delta, data.chips);
-        await handleAdjust(aptNumber, 'chips', -chipsToRemove, data.chips);
-        showToast(`🧺 ${delta} toalha(s) entregue(s) - ${chipsToRemove} ficha(s) usada(s)`, 'info');
+      if (item === 'chips') {
+        await handleAdjust(aptNumber, 'chips', -1, currentValue);
+        await handleAdjust(aptNumber, 'towels', 1, data.towels);
+        showToast('🎫➜🧺 Ficha trocada por toalha', 'info');
       } else {
-        showToast(`🧺 ${delta} toalha(s) entregue(s) (sem ficha/troca)`, 'info');
+        await handleAdjust(aptNumber, 'towels', -1, currentValue);
+        await handleAdjust(aptNumber, 'chips', 1, data.chips);
+        showToast('🧺➜🎫 Toalha devolvida — ficha recuperada', 'info');
       }
-      return;
-    }
-    
-    // 2. Devolução de Toalha (-)
-    // O operador clica em "- Toalha". O hóspede devolve, e ganha ficha de volta.
-    if (item === 'towels' && delta < 0) {
-      await handleAdjust(aptNumber, item, delta, currentValue);
-      await handleAdjust(aptNumber, 'chips', Math.abs(delta), data.chips);
-      showToast(`🎫 ${Math.abs(delta)} ficha(s) devolvida(s)`, 'info');
-      return;
-    }
-    
-    // 3. Adição de Ficha (+)
-    // O hóspede ganha fichas (check-in). NÃO entrega toalha ainda.
-    if (item === 'chips' && delta > 0) {
-      await handleAdjust(aptNumber, item, delta, currentValue);
-      showToast(`🎫 ${delta} ficha(s) adicionada(s)`, 'info');
-      return;
-    }
-    
-    // 4. Remoção de Ficha (-) -> Lógica solicitada
-    // O operador clica em "- Ficha". O sistema ENTREGA a toalha automaticamente.
-    if (item === 'chips' && delta < 0) {
-      const quantity = Math.abs(delta);
-      
-      // Remove a ficha (torna-se toalha)
-      await handleAdjust(aptNumber, item, delta, currentValue);
-      
-      // Adiciona a toalha correspondente
-      await handleAdjust(aptNumber, 'towels', quantity, data.towels);
-      
-      showToast(`🎫 Ficha removida - 🧺 ${quantity} toalha(s) entregue(s)`, 'info');
-      return;
-    }
-    
-    // Outros ajustes genéricos (fallback)
-    await handleAdjust(aptNumber, item, delta, currentValue);
-    const messages = {
-      chips: { up: 'Ficha adicionada', down: 'Ficha retirada' },
-      towels: { up: 'Toalha entregue', down: 'Toalha devolvida' }
-    };
-    const action = delta > 0 ? 'up' : 'down';
-    showToast(`${messages[item][action]}`, 'info');
-  };
+    },
+    [aptNumber, data.chips, data.towels, handleAdjust, showToast],
+  );
 
-  // Botão de assinatura - AGORA PERGUNTA QUANTAS TOALHAS
-  const handleRequestSignature = () => {
-    // Verifica se tem toalhas para registrar
+  // ── Handler de Edição ─────────────────────────────────────────────────────
+
+  const onEditPhoneConfirm = useCallback(
+    async (
+      phone: string,
+      _countryCode: string,
+      chips?: number,
+      towels?: number,
+      _pax?: number,
+    ) => {
+      try {
+        await updateApartmentPhone(aptNumber, phone);
+
+        if (chips !== undefined && chips !== data.chips) {
+          await handleAdjust(aptNumber, 'chips', chips - data.chips, data.chips);
+        }
+
+        if (towels !== undefined && towels !== data.towels) {
+          await handleAdjust(aptNumber, 'towels', towels - data.towels, data.towels);
+        }
+
+        showToast('Dados atualizados com sucesso!', 'success');
+        setShowEditPhoneModal(false);
+        onSuccess?.();
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : 'Erro desconhecido';
+        showToast(`Erro ao atualizar: ${msg}`, 'error');
+      }
+    },
+    [aptNumber, data.chips, data.towels, handleAdjust, onSuccess, showToast],
+  );
+
+  // ── Handler de Assinatura de Toalha ──────────────────────────────────────
+
+  const handleRequestSignature = useCallback(() => {
     if (data.towels <= 0) {
       showToast('Não há toalhas para registrar assinatura', 'warning');
       return;
     }
-    
-    // Pergunta quantas toalhas quer na assinatura
-    const quantityStr = prompt(
-      `📝 Registrar assinatura para ${data.guest || 'hóspede'} - Apto ${aptNumber}\n` +
-      `Toalhas atuais: ${data.towels}\n\n` +
-      'Quantas toalhas nesta assinatura?',
-      String(data.towels)
-    );
-    
-    if (!quantityStr) return;
-    
-    const quantity = parseInt(quantityStr);
-    if (isNaN(quantity) || quantity <= 0 || quantity > data.towels) {
-      showToast('Quantidade inválida', 'error');
-      return;
-    }
-    
-    // Define operação baseado se tem fichas ou não
-    const operation = data.chips > 0 ? 'chips_to_towels' : 'towel_exchange';
-    setPendingTowelData({ operation, quantity });
-    setShowTowelModal(true);
-  };
 
-  // Handler quando a assinatura é concluída
-  const handleTowelSignatureSuccess = () => {
+    const operation = data.chips > 0 ? 'chips_to_towels' : 'towel_exchange';
+    setPendingTowelData({ operation, quantity: data.towels });
+    setShowTowelModal(true);
+  }, [data.chips, data.towels, showToast]);
+
+  const handleTowelSignatureSuccess = useCallback(() => {
     setShowTowelModal(false);
     setPendingTowelData(null);
-    showToast('✅ Assinatura registrada com sucesso!', 'success');
+    showToast('Assinatura registrada com sucesso!', 'success');
     onSuccess?.();
-  };
+  }, [onSuccess, showToast]);
 
-  // Bloco e exibição de itens
-  const blockAndItems = (
-    <div className="flex items-center gap-1 mb-2">
-      <div className="text-xs text-gray-500 dark:text-gray-400">{data.block}</div>
-      {data.occupied && (
-        <div className="flex gap-1 ml-auto">
-          {data.towels > 0 && (
-            <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300 px-1.5 py-0.5 rounded-full font-medium">
-              🧺 {data.towels}
-            </span>
-          )}
-          {data.chips > 0 && (
-            <span className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 px-1.5 py-0.5 rounded-full font-medium">
-              🎫 {data.chips}
-            </span>
-          )}
-        </div>
-      )}
-    </div>
-  );
+  // ── Handlers de modal simplificados ──────────────────────────────────────
+
+  const openCheckin = useCallback(() => setShowCheckinModal(true), []);
+  const openCheckout = useCallback(() => setShowCheckoutModal(true), []);
+  const openHistory = useCallback(() => setShowHistoryModal(true), []);
+  const openEditPhone = useCallback(() => setShowEditPhoneModal(true), []);
+
+  const closeCheckin = useCallback(() => setShowCheckinModal(false), []);
+  const closeLanguage = useCallback(() => {
+    setShowLanguageModal(false);
+    setPendingCheckinData(null);
+  }, []);
+  const closeCheckout = useCallback(() => setShowCheckoutModal(false), []);
+  const closeEditPhone = useCallback(() => setShowEditPhoneModal(false), []);
+  const closeHistory = useCallback(() => setShowHistoryModal(false), []);
+  const closeTowel = useCallback(() => {
+    setShowTowelModal(false);
+    setPendingTowelData(null);
+  }, []);
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  const hasBadges = data.occupied && (data.towels > 0 || data.chips > 0);
 
   return (
     <>
-      <div className={`
-        border rounded-lg p-3 transition-all hover:shadow-md
-        ${data.occupied 
-          ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/30' 
-          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
-        }
-      `}>
-        <ApartmentHeader 
+      <article
+        className={`
+          border rounded-xl p-3 transition-all duration-200 hover:shadow-md focus-within:ring-2 focus-within:ring-blue-400
+          ${data.occupied
+            ? 'border-blue-300 bg-blue-50 dark:bg-blue-900/30 dark:border-blue-700'
+            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'}
+        `}
+        aria-label={`Apartamento ${aptNumber}${data.occupied ? `, ocupado por ${data.guest}` : ', disponível'}`}
+      >
+        {/* Cabeçalho com bloco e badges */}
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{data.block}</span>
+
+          {hasBadges && (
+            <div className="flex gap-1" aria-label="Itens do apartamento">
+              {data.towels > 0 && (
+                <span
+                  className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300 px-1.5 py-0.5 rounded-full font-semibold"
+                  aria-label={`${data.towels} toalha(s)`}
+                >
+                  🧺 {data.towels}
+                </span>
+              )}
+              {data.chips > 0 && (
+                <span
+                  className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 px-1.5 py-0.5 rounded-full font-semibold"
+                  aria-label={`${data.chips} ficha(s)`}
+                >
+                  🎫 {data.chips}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <ApartmentHeader
           aptNumber={aptNumber}
           isOccupied={data.occupied}
-          onEditPhone={data.occupied ? () => setShowEditPhoneModal(true) : undefined}
+          onEditPhone={data.occupied ? openEditPhone : undefined}
         />
-        
-        <ApartmentGuestInfo 
-          guest={data.guest}
-          phone={data.phone}
-        />
-        
-        {blockAndItems}
+
+        <ApartmentGuestInfo guest={data.guest} phone={data.phone} />
 
         {data.occupied && (
           <>
@@ -290,12 +302,21 @@ export function ApartmentCard({ aptNumber, data, onSuccess }: ApartmentCardProps
               loading={loading}
               onAdjust={onAdjustItem}
             />
-            
-            {/* Botão independente para assinatura */}
+
             <button
               onClick={handleRequestSignature}
               disabled={loading || data.towels <= 0}
-              className="w-full mt-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg text-amber-800 dark:text-amber-200 text-xs font-medium hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+              aria-label="Registrar assinatura digital de toalhas"
+              className="
+                w-full mt-2 px-3 py-1.5 rounded-lg text-xs font-medium
+                flex items-center justify-center gap-1.5 transition-all duration-150
+                bg-amber-50 dark:bg-amber-900/20
+                border border-amber-300 dark:border-amber-700
+                text-amber-800 dark:text-amber-200
+                hover:bg-amber-100 dark:hover:bg-amber-900/40
+                active:scale-[0.98]
+                disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100
+              "
             >
               ✍️ Registrar assinatura digital
             </button>
@@ -305,20 +326,19 @@ export function ApartmentCard({ aptNumber, data, onSuccess }: ApartmentCardProps
         <ApartmentActions
           isOccupied={data.occupied}
           loading={loading}
-          onCheckin={() => setShowCheckinModal(true)}
-          onCheckout={() => {
-            setShowCheckoutModal(true);
-          }}
-          onHistory={() => setShowHistoryModal(true)}
+          onCheckin={openCheckin}
+          onCheckout={openCheckout}
+          onHistory={openHistory}
         />
-      </div>
+      </article>
 
-      {/* Modais existentes */}
+      {/* ── Modais ──────────────────────────────────────────────────────────── */}
+
       <CheckinModal
         isOpen={showCheckinModal}
         aptNumber={aptNumber}
         loading={loading}
-        onClose={() => setShowCheckinModal(false)}
+        onClose={closeCheckin}
         onConfirm={onCheckinConfirm}
       />
 
@@ -326,10 +346,7 @@ export function ApartmentCard({ aptNumber, data, onSuccess }: ApartmentCardProps
         isOpen={showLanguageModal}
         guestName={pendingCheckinData?.guestName}
         onSelect={confirmWithLanguage}
-        onCancel={() => {
-          setShowLanguageModal(false);
-          setPendingCheckinData(null);
-        }}
+        onCancel={closeLanguage}
       />
 
       <CheckoutModal
@@ -340,7 +357,7 @@ export function ApartmentCard({ aptNumber, data, onSuccess }: ApartmentCardProps
         chips={data.chips}
         towels={data.towels}
         loading={loading}
-        onClose={() => setShowCheckoutModal(false)}
+        onClose={closeCheckout}
         onConfirm={onCheckoutConfirm}
       />
 
@@ -349,8 +366,10 @@ export function ApartmentCard({ aptNumber, data, onSuccess }: ApartmentCardProps
         aptNumber={aptNumber}
         guest={data.guest}
         currentPhone={data.phone}
+        currentChips={data.chips}
+        currentTowels={data.towels}
         loading={loading}
-        onClose={() => setShowEditPhoneModal(false)}
+        onClose={closeEditPhone}
         onConfirm={onEditPhoneConfirm}
       />
 
@@ -359,24 +378,20 @@ export function ApartmentCard({ aptNumber, data, onSuccess }: ApartmentCardProps
         aptNumber={aptNumber}
         guestName={data.guest}
         blockName={data.block}
-        onClose={() => setShowHistoryModal(false)}
+        onClose={closeHistory}
       />
 
-      {/* Modal de assinatura de toalha */}
       {pendingTowelData && (
         <TowelSignatureModal
           isOpen={showTowelModal}
           aptNumber={aptNumber}
-          guestName={data.guest || ''}
+          guestName={data.guest ?? ''}
           operation={pendingTowelData.operation}
           quantity={pendingTowelData.quantity}
-          onClose={() => {
-            setShowTowelModal(false);
-            setPendingTowelData(null);
-          }}
+          onClose={closeTowel}
           onSuccess={handleTowelSignatureSuccess}
         />
       )}
     </>
   );
-}
+});
