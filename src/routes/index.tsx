@@ -23,6 +23,8 @@ import { AdminUsersPage } from '../pages/AdminUsersPage';
 import { TabuaDeMarePage } from '../pages/TabuaDeMarePage';
 import { PublicOSPage } from '../pages/PublicOSPage';
 import { PublicTourPage } from '../pages/PublicTourPage';
+import { PublicTowelSignaturePage } from '../pages/PublicTowelSignaturePage';
+import { PublicToursPage } from '../pages/PublicToursPage'; // Adicionado
 
 // Lost & Found Pages
 import { LostAndFoundLayout } from '../pages/lostAndFound/LostAndFoundLayout';
@@ -48,9 +50,6 @@ import { ServiceOrderReports } from '../pages/serviceOrders/ServiceOrderReports'
 // Hooks
 import { useServiceOrders } from '../hooks/useServiceOrders';
 import type { ServiceOrder } from '../types/serviceOrder.types';
-
-// Adicionar no routes/index.tsx:
-import { PublicTowelSignaturePage } from '../pages/PublicTowelSignaturePage';
 
 // Wrapper para a lista de OS com lógica de modais
 function ServiceOrderListPage() {
@@ -113,6 +112,10 @@ export const router = createBrowserRouter([
   {
     path: '/osabertas',
     element: <PublicOSPage />,
+  },
+  {
+    path: '/passeios',
+    element: <PublicToursPage />,
   },
   {
     path: '/passeio/:tourId',

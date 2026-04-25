@@ -166,6 +166,21 @@ export function CommissionSettings() {
 
   return (
     <div className="space-y-6">
+      {/* No topo do return do CommissionSettings, adicione: */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold">⚙️ Configurações de Comissões</h2>
+        
+        {/* 🆕 Link para página pública */}
+        <a
+          href="/passeios"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+        >
+          🌐 Ver Página Pública
+        </a>
+      </div>
+
       {/* Configurações Gerais */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <GlobalCommissionCard 

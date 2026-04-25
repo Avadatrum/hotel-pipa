@@ -1,6 +1,7 @@
-// src/components/commissions/TourFormModal.tsx
+// src/components/commissions/TourFormModal.tsx - Atualizado com RichTextEditor
 import { useState } from 'react';
 import type { TipoPreco } from '../../types/commission.types';
+import { RichTextEditor } from './RichTextEditor'; // 🆕
 
 interface TourFormData {
   nome: string;
@@ -36,8 +37,8 @@ export function TourFormModal({ open, loading, onClose, onCreate }: Props) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg shadow-2xl max-h-[95vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-5 py-4 flex items-center justify-between">
+      <div className="bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl shadow-2xl max-h-[95vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-5 py-4 flex items-center justify-between z-10">
           <h3 className="font-semibold text-gray-900 dark:text-white">Novo passeio / transfer</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">✕</button>
         </div>
@@ -51,15 +52,19 @@ export function TourFormModal({ open, loading, onClose, onCreate }: Props) {
               className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" autoFocus />
           </div>
 
-          {/* Descrição */}
+          {/* 🆕 Descrição com Editor Rico */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
-              Descrição para o cliente
+              Descrição para o site ✨
             </label>
-            <textarea value={form.descricao} onChange={e => set({ descricao: e.target.value })} rows={3}
-              placeholder="Descreva o passeio para enviar ao cliente via WhatsApp. Ex: Explore as belas dunas de Natal em um quadriciclo, com paradas nas piscinas naturais..."
-              className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-            <p className="text-xs text-gray-400 mt-1">Será usada ao enviar o resumo do passeio por WhatsApp.</p>
+            <p className="text-xs text-gray-400 mb-2">
+              Formate o texto com a barra de ferramentas. Adicione títulos, negrito, imagens e links.
+            </p>
+            <RichTextEditor
+              value={form.descricao}
+              onChange={(value) => set({ descricao: value })}
+              placeholder="Descreva o passeio com detalhes atrativos para os hóspedes..."
+            />
           </div>
 
           {/* Tipo de cobrança */}
@@ -79,7 +84,7 @@ export function TourFormModal({ open, loading, onClose, onCreate }: Props) {
             </div>
           </div>
 
-          {/* Capacidade (só por_passeio) */}
+          {/* Capacidade */}
           {isPorPasseio && (
             <div>
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Capacidade máxima</label>
@@ -113,8 +118,8 @@ export function TourFormModal({ open, loading, onClose, onCreate }: Props) {
           {form.precoBase > 0 && (
             <div className="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
               {isPorPasseio
-                ? <>Preço fixo de <strong>R$ {form.precoBase.toFixed(2)}</strong> por saída{form.capacidadeMaxima ? ` (até ${form.capacidadeMaxima} pessoas)` : ''}. {form.comissaoPadrao > 0 && <>Comissão de <strong>R$ {form.comissaoPadrao.toFixed(2)}</strong> por saída.</>}</>
-                : <>Preço de <strong>R$ {form.precoBase.toFixed(2)}</strong> por pessoa. {form.comissaoPadrao > 0 && <>Comissão de <strong>R$ {form.comissaoPadrao.toFixed(2)}</strong>/pessoa. Para 2: <strong>R$ {(form.comissaoPadrao * 2).toFixed(2)}</strong>.</>}</>
+                ? <>Preço fixo de <strong>R$ {form.precoBase.toFixed(2)}</strong> por saída{form.capacidadeMaxima ? ` (até ${form.capacidadeMaxima} pessoas)` : ''}.</>
+                : <>Preço de <strong>R$ {form.precoBase.toFixed(2)}</strong> por pessoa.</>
               }
             </div>
           )}

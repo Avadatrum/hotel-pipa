@@ -11,6 +11,12 @@
     "seed": "node --import=tsx scripts/seedTours.js"
   },
   "dependencies": {
+    "@tiptap/extension-image": "^3.22.4",
+    "@tiptap/extension-link": "^3.22.4",
+    "@tiptap/extension-placeholder": "^3.22.4",
+    "@tiptap/extension-text-align": "^3.22.4",
+    "@tiptap/react": "^3.22.4",
+    "@tiptap/starter-kit": "^3.22.4",
     "@types/uuid": "^10.0.0",
     "@yudiel/react-qr-scanner": "^2.5.1",
     "autoprefixer": "^10.4.27",

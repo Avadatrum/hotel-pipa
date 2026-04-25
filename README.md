@@ -42,7 +42,8 @@ hotel-pipa
 │  │  │  ├─ CheckinModal.tsx
 │  │  │  ├─ CheckoutModal.tsx
 │  │  │  ├─ EditPhoneModal.tsx
-│  │  │  └─ LanguageSelectionModal.tsx
+│  │  │  ├─ LanguageSelectionModal.tsx
+│  │  │  └─ TowelSignatureModal.tsx
 │  │  ├─ ApartmentCard.tsx
 │  │  ├─ ApartmentHistoryModal.tsx
 │  │  ├─ Button.tsx
@@ -121,7 +122,8 @@ hotel-pipa
 │  │  ├─ usePermission.ts
 │  │  ├─ useServiceOrders.ts
 │  │  ├─ useTabuaMare.ts
-│  │  └─ useToast.tsx
+│  │  ├─ useToast.tsx
+│  │  └─ useTowelValidation.ts
 │  ├─ main.tsx
 │  ├─ pages
 │  │  ├─ AdminUsersPage.tsx
@@ -144,6 +146,7 @@ hotel-pipa
 │  │  ├─ LostAndFoundPage.tsx
 │  │  ├─ PublicOSPage.tsx
 │  │  ├─ PublicTourPage.tsx
+│  │  ├─ PublicTowelSignaturePage.tsx
 │  │  ├─ ReceiptsPage.tsx
 │  │  ├─ serviceOrders
 │  │  │  ├─ ServiceOrderDashboard.tsx
@@ -164,7 +167,8 @@ hotel-pipa
 │  │  ├─ seedService.ts
 │  │  ├─ serviceOrderService.ts
 │  │  ├─ storageService.ts
-│  │  └─ tabuaMareService.ts
+│  │  ├─ tabuaMareService.ts
+│  │  └─ towelService.ts
 │  ├─ styles
 │  │  └─ index.css
 │  ├─ types
