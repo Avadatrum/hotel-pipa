@@ -16,6 +16,7 @@ import { CheckoutModal } from './apartment/CheckoutModal';
 import { EditPhoneModal } from './apartment/EditPhoneModal';
 import { LanguageSelectionModal } from './apartment/LanguageSelectionModal';
 import { TowelSignatureModal } from './apartment/TowelSignatureModal';
+import { TermSignatureModal } from './apartment/TermSignatureModal';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -65,29 +66,50 @@ export const ApartmentCard = memo(function ApartmentCard({
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showEditPhoneModal, setShowEditPhoneModal] = useState(false);
   const [showTowelModal, setShowTowelModal] = useState(false);
+  const [showTermModal, setShowTermModal] = useState(false);
 
   // Estados auxiliares
   const [pendingCheckinData, setPendingCheckinData] = useState<CheckinData | null>(null);
   const [pendingTowelData, setPendingTowelData] = useState<TowelData | null>(null);
+  const [pendingTermGuest, setPendingTermGuest] = useState('');
+  const [pendingTermPhone, setPendingTermPhone] = useState('');
+  const [pendingTermCountryCode, setPendingTermCountryCode] = useState('+55');
+  const [pendingTermPax, setPendingTermPax] = useState(1);
 
   // ── Handlers de Check-in ──────────────────────────────────────────────────
 
   const onCheckinConfirm = useCallback(
     async (checkinData: CheckinData) => {
-      const { guestName, pax, phone } = checkinData;
+      const { guestName, pax, phone, countryCode } = checkinData;
+      const fullPhone = phone?.trim() ? `${countryCode} ${phone}` : '';
 
-      if (phone?.trim()) {
-        setPendingCheckinData(checkinData);
-        setShowLanguageModal(true);
-      } else {
-        const result = await handleCheckin(aptNumber, guestName, pax, '');
-        if (result.success) {
-          showToast(`Check-in realizado! Apto ${aptNumber} — ${guestName}`, 'success');
-          setShowCheckinModal(false);
-          onSuccess?.();
+      // Faz o check-in primeiro
+      const result = await handleCheckin(aptNumber, guestName, pax, fullPhone);
+      if (result.success) {
+        showToast(`Check-in realizado! Apto ${aptNumber} — ${guestName}`, 'success');
+        setShowCheckinModal(false);
+
+        // Se tem WhatsApp, pergunta idioma E envia mensagem
+        if (phone?.trim()) {
+          // NÃO sobrescreve phone com fullPhone — mantém separado!
+          setPendingCheckinData({
+            guestName,
+            pax,
+            phone, // número puro (sem código)
+            countryCode // código do país
+          });
+          setShowLanguageModal(true);
         } else {
-          showToast(`Erro no check-in: ${result.error}`, 'error');
+          // Sem WhatsApp — abre direto o modal do termo
+          setPendingTermGuest(guestName);
+          setPendingTermPhone(phone || '');
+          setPendingTermCountryCode(countryCode); 
+          setPendingTermPax(pax);
+          setShowTermModal(true);
         }
+        onSuccess?.();
+      } else {
+        showToast(`Erro no check-in: ${result.error}`, 'error');
       }
     },
     [aptNumber, handleCheckin, onSuccess, showToast],
@@ -98,33 +120,39 @@ export const ApartmentCard = memo(function ApartmentCard({
       if (!pendingCheckinData) return;
 
       const { guestName, pax, phone, countryCode } = pendingCheckinData;
-      const fullPhone = `${countryCode} ${phone}`;
-      const result = await handleCheckin(aptNumber, guestName, pax, fullPhone);
 
-      if (result.success) {
-        showToast(`Check-in realizado! Apto ${aptNumber} — ${guestName}`, 'success');
+      // CORREÇÃO: Definir as variáveis fora do if para uso posterior
+      const cleanCode = countryCode.replace(/\D/g, '');
+      const cleanPhone = phone.replace(/\D/g, '');
+      const fullPhone = `${cleanCode}${cleanPhone}`;
+      
+      if (phone?.trim()) {
+        console.log('📱 Enviando WhatsApp para:', fullPhone); // Debug
 
-        if (phone?.trim()) {
-          const fallbackName =
-            language === 'pt'
-              ? 'Equipe Hotel da Pipa'
-              : language === 'es'
-                ? 'Equipo Hotel da Pipa'
-                : 'Hotel da Pipa Team';
-          const userName = user?.name ?? fallbackName;
-          sendWhatsAppMessage(phone, countryCode, guestName, aptNumber, language, userName);
-          showToast(`Mensagem enviada em ${LANGUAGE_NAMES[language]}!`, 'info');
-        }
-
-        setShowLanguageModal(false);
-        setShowCheckinModal(false);
-        setPendingCheckinData(null);
-        onSuccess?.();
-      } else {
-        showToast(`Erro no check-in: ${result.error}`, 'error');
+        const fallbackName =
+          language === 'pt'
+            ? 'Equipe Hotel da Pipa'
+            : language === 'es'
+              ? 'Equipo Hotel da Pipa'
+              : 'Hotel da Pipa Team';
+        const userName = user?.name ?? fallbackName;
+        
+        sendWhatsAppMessage(cleanPhone, cleanCode, guestName, aptNumber, language, userName);
+        showToast(`Mensagem enviada em ${LANGUAGE_NAMES[language]}!`, 'info');
       }
+
+      setShowLanguageModal(false);
+
+      // Abrir modal do termo
+      setPendingTermGuest(guestName);
+      setPendingTermPhone(cleanPhone); // Agora cleanPhone está definido
+      setPendingTermCountryCode(cleanCode); // Agora cleanCode está definido
+      setPendingTermPax(pax);
+      setShowTermModal(true);
+
+      setPendingCheckinData(null);
     },
-    [aptNumber, handleCheckin, onSuccess, pendingCheckinData, showToast, user?.name],
+    [aptNumber, pendingCheckinData, showToast, user?.name],
   );
 
   // ── Handler de Check-out ──────────────────────────────────────────────────
@@ -224,6 +252,22 @@ export const ApartmentCard = memo(function ApartmentCard({
     showToast('Assinatura registrada com sucesso!', 'success');
     onSuccess?.();
   }, [onSuccess, showToast]);
+
+  // ── Handlers do Termo ────────────────────────────────────────────────────
+
+  const handleTermSuccess = useCallback(() => {
+    setShowTermModal(false);
+    showToast('Termo assinado com sucesso!', 'success');
+  }, [showToast]);
+
+  const handleTermSkip = useCallback(() => {
+    setShowTermModal(false);
+    showToast('Termo poderá ser assinado depois', 'info');
+  }, [showToast]);
+
+  const closeTerm = useCallback(() => {
+    setShowTermModal(false);
+  }, []);
 
   // ── Handlers de modal simplificados ──────────────────────────────────────
 
@@ -392,6 +436,18 @@ export const ApartmentCard = memo(function ApartmentCard({
           onSuccess={handleTowelSignatureSuccess}
         />
       )}
+
+      <TermSignatureModal
+        isOpen={showTermModal}
+        aptNumber={aptNumber}
+        guestName={pendingTermGuest}
+        phone={pendingTermPhone}
+        countryCode={pendingTermCountryCode}
+        pax={pendingTermPax}
+        onClose={closeTerm}
+        onSuccess={handleTermSuccess}
+        onSkip={handleTermSkip}
+      />
     </>
   );
 });

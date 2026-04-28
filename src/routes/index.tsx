@@ -25,6 +25,8 @@ import { PublicOSPage } from '../pages/PublicOSPage';
 import { PublicTourPage } from '../pages/PublicTourPage';
 import { PublicTowelSignaturePage } from '../pages/PublicTowelSignaturePage';
 import { PublicToursPage } from '../pages/PublicToursPage'; // Adicionado
+import { PublicTermSignaturePage } from '../pages/PublicTermSignaturePage';
+import { TermSignaturesPage } from '../pages/TermSignaturesPage';
 
 // Lost & Found Pages
 import { LostAndFoundLayout } from '../pages/lostAndFound/LostAndFoundLayout';
@@ -126,6 +128,10 @@ export const router = createBrowserRouter([
     element: <PublicTowelSignaturePage />,
   },
   {
+    path: '/termo/:token',
+    element: <PublicTermSignaturePage />,
+  },
+  {
     path: '/',
     element: (
       <ProtectedRoute>
@@ -180,6 +186,7 @@ export const router = createBrowserRouter([
       },
 
       { path: 'admin/usuarios', element: <AdminRoute><AdminUsersPage /></AdminRoute> },
+      { path: 'admin/termos',   element: <AdminRoute><TermSignaturesPage /></AdminRoute> },
     ],
   },
 ]);

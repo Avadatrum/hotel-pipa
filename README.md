@@ -61,6 +61,7 @@ hotel-pipa
 │  │  │  ├─ PeriodControl.tsx
 │  │  │  ├─ PromotionFormModal.tsx
 │  │  │  ├─ PromotionsList.tsx
+│  │  │  ├─ RichTextEditor.tsx
 │  │  │  ├─ SalesRegister.tsx
 │  │  │  ├─ SalesTable.tsx
 │  │  │  ├─ SendTourPromoModal.tsx
@@ -146,6 +147,7 @@ hotel-pipa
 │  │  ├─ LostAndFoundPage.tsx
 │  │  ├─ PublicOSPage.tsx
 │  │  ├─ PublicTourPage.tsx
+│  │  ├─ PublicToursPage.tsx
 │  │  ├─ PublicTowelSignaturePage.tsx
 │  │  ├─ ReceiptsPage.tsx
 │  │  ├─ serviceOrders

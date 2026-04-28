@@ -13,7 +13,7 @@ const stripHtml = (html: string) => {
 
 // --- SUB-COMPONENTE: TOUR CARD ---
 const TourCard = React.memo(({ tour }: { tour: Tour }) => {
-  const whatsappNumber = '5584999999999';
+  const whatsappNumber = '5584981328284';
   const text = encodeURIComponent(
     `Olá! Tenho interesse no passeio *${tour.nome}* e gostaria de saber mais informações. 🌊`
   );

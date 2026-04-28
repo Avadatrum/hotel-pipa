@@ -67,3 +67,17 @@ export interface TowelSignature {
   wasCleared?: boolean; // NOVO: indica se a assinatura foi limpa no checkout
   clearedAt?: string; // NOVO: quando foi limpa
 }
+
+export interface TermSignature {
+  id?: string;
+  aptNumber: number;
+  guestName: string;
+  phone?: string;
+  pax: number;
+  token: string;
+  signature: string; // base64 da assinatura
+  signedAt: string; // ISO date
+  expiresAt: string;
+  used: boolean;
+  createdAt: string;
+}

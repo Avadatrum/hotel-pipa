@@ -1,4 +1,4 @@
-// src/contexts/LostAndFoundContext.tsx
+// src/contexts/LostAndFoundContext.tsx - VERSÃO QUE FUNCIONA (original + refresh automático)
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { LostItem, LostItemFilters, LostItemFormData } from '../types/lostAndFound.types';
 import * as lostAndFoundService from '../services/lostAndFoundService';
@@ -37,7 +37,7 @@ export const LostAndFoundProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const { user } = useAuth();
   const { showToast } = useToast();
 
-  // CARREGAR ITENS AUTOMATICAMENTE AO INICIAR (OU QUANDO USUÁRIO MUDAR)
+  // CARREGAR ITENS AUTOMATICAMENTE
   useEffect(() => {
     if (!user) {
       console.log('⏸️ Aguardando autenticação para carregar itens...');
@@ -78,10 +78,7 @@ export const LostAndFoundProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       const newItem = await lostAndFoundService.createLostItem(data, user.id);
       showToast(`Item ${newItem.uniqueCode} cadastrado com sucesso!`, 'success');
-      
-      setItems(prevItems => [newItem, ...prevItems]);
-      await loadItems();
-      
+      await loadItems(); // Recarrega
       return newItem;
     } catch (error) {
       console.error('Error creating item:', error);
@@ -91,23 +88,11 @@ export const LostAndFoundProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const updateItem = async (id: string, data: Partial<LostItem>, photo?: File) => {
-    console.log('📝 Context: Atualizando item', { id, hasPhoto: !!photo });
-    
     try {
-      // 🆕 REMOVER campos de arquivo e IDs antes de enviar para o Firestore
       const { photo: photoField, photos: photosField, photoURL, id: itemId, createdAt, ...updateData } = data as any;
-      
-      // ✅ CORREÇÃO APLICADA: Envia o 'photo' diretamente para o serviço
       await lostAndFoundService.updateLostItem(id, updateData, photo);
-      
       showToast('Item atualizado com sucesso!', 'success');
-      
-      // Aguardar o Firestore processar a propagação dos dados
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Recarregar lista para refletir mudanças
-      await loadItems();
-      
+      await loadItems(); // Recarrega (sem delay)
     } catch (error) {
       console.error('Error updating item:', error);
       showToast('Erro ao atualizar item', 'error');
@@ -118,9 +103,7 @@ export const LostAndFoundProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       await lostAndFoundService.deleteLostItem(id);
       showToast('Item removido com sucesso!', 'success');
-      
-      setItems(prevItems => prevItems.filter(item => item.id !== id));
-      await loadItems();
+      await loadItems(); // Recarrega
     } catch (error) {
       console.error('Error deleting item:', error);
       showToast('Erro ao remover item', 'error');
@@ -131,7 +114,7 @@ export const LostAndFoundProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       await lostAndFoundService.markAsReturned(id, returnedTo);
       showToast('Item marcado como entregue!', 'success');
-      await loadItems();
+      await loadItems(); // Recarrega
     } catch (error) {
       console.error('Error marking as returned:', error);
       showToast('Erro ao marcar item como entregue', 'error');
@@ -142,7 +125,7 @@ export const LostAndFoundProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       await lostAndFoundService.markAsDiscarded(id);
       showToast('Item marcado como descartado!', 'success');
-      await loadItems();
+      await loadItems(); // Recarrega
     } catch (error) {
       console.error('Error marking as discarded:', error);
       showToast('Erro ao marcar item como descartado', 'error');
@@ -167,8 +150,6 @@ export const LostAndFoundProvider: React.FC<{ children: React.ReactNode }> = ({ 
       Local: ${item.foundLocation}
       Entregue por: ${item.deliveredBy}
       Status: ${item.status === 'guardado' ? 'AGUARDANDO' : item.status === 'entregue' ? 'ENTREGUE' : 'DESCARTADO'}
-      
-      =================================
     `;
   };
 

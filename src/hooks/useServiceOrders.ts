@@ -1,7 +1,8 @@
-// src/hooks/useServiceOrders.ts
+// src/hooks/useServiceOrders.ts - CORRIGIDO COM TEMPO REAL
 import { useState, useEffect } from 'react';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { listServiceOrders } from '../services/serviceOrderService';
 import type { ServiceOrder } from '../types/serviceOrder.types';
 import { useToast } from './useToast';
 
@@ -13,37 +14,54 @@ export function useServiceOrders() {
   const { user } = useAuth();
   const { showToast } = useToast();
 
-  const loadData = async () => {
-     if (!user) {
+  useEffect(() => {
+    if (!user) {
+      console.log('⏸️ useServiceOrders: Aguardando autenticação...');
       setOrders([]);
       setLoading(false);
       setError(null);
       return;
     }
 
-    try {
-      setLoading(true);
+    console.log('🔄 useServiceOrders: Iniciando listener em tempo real...');
+    setLoading(true);
+
+    // Query com ordenação por timestamp
+    const q = query(
+      collection(db, 'serviceOrders'),
+      orderBy('ts', 'desc')
+    );
+
+    // 🔥 onSnapshot = tempo real
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const ordersList: ServiceOrder[] = [];
+      snapshot.forEach((doc) => {
+        ordersList.push({ id: doc.id, ...doc.data() } as ServiceOrder);
+      });
+      
+      console.log(`✅ useServiceOrders: ${ordersList.length} OS carregadas`);
+      setOrders(ordersList);
+      setLoading(false);
       setError(null);
-      const data = await listServiceOrders();
-      setOrders(data);
-    } catch (err) {
-      console.error('Erro ao carregar OS:', err);
+    }, (err) => {
+      console.error('❌ Erro no listener de OS:', err);
       setError(err as Error);
       showToast('Erro ao carregar ordens de serviço', 'error');
-    } finally {
       setLoading(false);
-    }
-  };
+    });
 
-  useEffect(() => {
-    loadData();
+    // Cleanup ao desmontar
+    return () => {
+      console.log('🛑 useServiceOrders: Limpando listener...');
+      unsubscribe();
+    };
   }, [user, showToast]);
 
-  // ✅ ADICIONADO FUNÇÃO REFRESH NOVAMENTE
+  // 🔄 Função refresh mantida para compatibilidade
   const refreshOrders = () => {
-    loadData();
+    // Não precisa fazer nada, onSnapshot já mantém atualizado
+    console.log('ℹ️ refreshOrders chamado, mas onSnapshot já está ativo');
   };
 
-  // ✅ ADICIONADO AO RETURN
   return { orders, loading, error, refreshOrders };
 }
