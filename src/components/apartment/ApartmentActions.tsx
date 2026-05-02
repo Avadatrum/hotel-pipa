@@ -1,4 +1,4 @@
-// components/apartment/ApartmentActions.tsx
+// src/components/apartment/ApartmentActions.tsx
 
 interface ApartmentActionsProps {
   isOccupied: boolean;
@@ -6,6 +6,7 @@ interface ApartmentActionsProps {
   onCheckin: () => void;
   onCheckout: () => void;
   onHistory: () => void;
+  onShareGuide?: () => void; // 🆕
 }
 
 export function ApartmentActions({ 
@@ -13,7 +14,8 @@ export function ApartmentActions({
   loading, 
   onCheckin, 
   onCheckout, 
-  onHistory 
+  onHistory,
+  onShareGuide // 🆕
 }: ApartmentActionsProps) {
   return (
     <div className="space-y-1">
@@ -26,13 +28,25 @@ export function ApartmentActions({
           Check-in
         </button>
       ) : (
-        <button
-          onClick={onCheckout}
-          disabled={loading}
-          className="w-full mt-2 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50 transition-colors font-medium"
-        >
-          Check-out
-        </button>
+        <>
+          <button
+            onClick={onCheckout}
+            disabled={loading}
+            className="w-full mt-2 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50 transition-colors font-medium"
+          >
+            Check-out
+          </button>
+          
+          {/* 🆕 Botão de compartilhar guia */}
+          {onShareGuide && (
+            <button
+              onClick={onShareGuide}
+              className="w-full mt-1 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+            >
+              <span>📱</span> Compartilhar Guia
+            </button>
+          )}
+        </>
       )}
 
       <button

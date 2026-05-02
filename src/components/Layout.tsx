@@ -6,6 +6,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { Footer } from './Footer';
 import { UserMenu } from './UserMenu';
 import { OSNotificationContainer } from './serviceOrders/OSNotificationContainer';
+import { TaxiNotification } from './TaxiNotification'; // ← NOVO IMPORT ADICIONADO
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -42,7 +43,7 @@ export function Layout() {
     { id: 'apts', label: 'Apartamentos', icon: '🏨', path: '/' },
     { id: 'os', label: 'Ordens de Serviço', icon: '🔧', path: '/os' },
     { id: 'commissions', label: 'Comissões', icon: '💰', path: '/comissoes' },
-    { id: 'lostAndFound', label: 'Achados & Perdidos', icon: '🔍', path: '/achados-e-perdidos' }, // ← CORRIGIDO: path em português
+    { id: 'lostAndFound', label: 'Achados & Perdidos', icon: '🔍', path: '/achados-e-perdidos' },
     { id: 'log', label: 'Histórico', icon: '📋', path: '/historico' },
     { id: 'recibos', label: 'Recibos', icon: '🧾', path: '/recibos' },
     { id: 'documentos', label: 'Documentos', icon: '📁', path: '/documentos' },
@@ -226,6 +227,9 @@ export function Layout() {
 
       {/* Container de Notificações de OS */}
       <OSNotificationContainer />
+
+      {/* 🆕 Container de Notificações de Táxi */}
+      <TaxiNotification />
       
     </div>
   );

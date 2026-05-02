@@ -43,6 +43,8 @@ hotel-pipa
 │  │  │  ├─ CheckoutModal.tsx
 │  │  │  ├─ EditPhoneModal.tsx
 │  │  │  ├─ LanguageSelectionModal.tsx
+│  │  │  ├─ TermDocument.tsx
+│  │  │  ├─ TermSignatureModal.tsx
 │  │  │  └─ TowelSignatureModal.tsx
 │  │  ├─ ApartmentCard.tsx
 │  │  ├─ ApartmentHistoryModal.tsx
@@ -123,6 +125,7 @@ hotel-pipa
 │  │  ├─ usePermission.ts
 │  │  ├─ useServiceOrders.ts
 │  │  ├─ useTabuaMare.ts
+│  │  ├─ useTermPDF.ts
 │  │  ├─ useToast.tsx
 │  │  └─ useTowelValidation.ts
 │  ├─ main.tsx
@@ -146,6 +149,7 @@ hotel-pipa
 │  │  │  └─ LostAndFoundScanPage.tsx
 │  │  ├─ LostAndFoundPage.tsx
 │  │  ├─ PublicOSPage.tsx
+│  │  ├─ PublicTermSignaturePage.tsx
 │  │  ├─ PublicTourPage.tsx
 │  │  ├─ PublicToursPage.tsx
 │  │  ├─ PublicTowelSignaturePage.tsx
@@ -156,7 +160,8 @@ hotel-pipa
 │  │  │  ├─ ServiceOrderReports.tsx
 │  │  │  └─ ServiceOrdersPage.tsx
 │  │  ├─ SetAdminPage.tsx
-│  │  └─ TabuaDeMarePage.tsx
+│  │  ├─ TabuaDeMarePage.tsx
+│  │  └─ TermSignaturesPage.tsx
 │  ├─ routes
 │  │  └─ index.tsx
 │  ├─ services
@@ -170,6 +175,7 @@ hotel-pipa
 │  │  ├─ serviceOrderService.ts
 │  │  ├─ storageService.ts
 │  │  ├─ tabuaMareService.ts
+│  │  ├─ termService.ts
 │  │  └─ towelService.ts
 │  ├─ styles
 │  │  └─ index.css

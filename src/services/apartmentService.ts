@@ -3,6 +3,7 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Apartment } from '../types';
 import { addWithAudit } from './auditService';
+import { generateGuestToken, invalidateAllTokensForApt, getActiveTokenForApt } from './guestGuideService';
 
 // Onde faz o checkout, adicione:
 import { clearSignaturesOnCheckout } from './towelService';
@@ -71,7 +72,10 @@ export async function doCheckout(aptNumber: number, lostTowels: number) {
     await addLoss(aptNumber, aptData.block, aptData.guest || '', lostTowels);
   }
   
-  // Dentro da função de checkout:
+  // 🆕 Invalida o guia do hóspede
+  await invalidateAllTokensForApt(aptNumber);
+
+  // Limpa as assinaturas de toalhas
   await clearSignaturesOnCheckout(aptNumber);
 
   // Limpa o apartamento
@@ -150,4 +154,27 @@ export async function updateApartmentPhone(aptNumber: number, phone: string) {
     console.error('Erro ao atualizar telefone:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Erro desconhecido' };
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// GUIA DO HÓSPEDE
+// ═══════════════════════════════════════════════════════════
+
+// Gerar link do guia para o hóspede
+export async function getGuestGuideLink(
+  aptNumber: number, 
+  guestName: string, 
+  phone?: string
+): Promise<string> {
+  const { url } = await generateGuestToken(aptNumber, guestName, phone);
+  return url;
+}
+
+// Buscar link existente (para recompartilhar)
+export async function getExistingGuideLink(aptNumber: number): Promise<string | null> {
+  const activeToken = await getActiveTokenForApt(aptNumber);
+  if (!activeToken) return null;
+  
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${origin}/guia/${aptNumber}/${activeToken.token}`;
 }

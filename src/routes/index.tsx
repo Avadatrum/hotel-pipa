@@ -24,9 +24,11 @@ import { TabuaDeMarePage } from '../pages/TabuaDeMarePage';
 import { PublicOSPage } from '../pages/PublicOSPage';
 import { PublicTourPage } from '../pages/PublicTourPage';
 import { PublicTowelSignaturePage } from '../pages/PublicTowelSignaturePage';
-import { PublicToursPage } from '../pages/PublicToursPage'; // Adicionado
+import { PublicToursPage } from '../pages/PublicToursPage';
 import { PublicTermSignaturePage } from '../pages/PublicTermSignaturePage';
 import { TermSignaturesPage } from '../pages/TermSignaturesPage';
+import { PublicGuestGuidePage } from '../pages/PublicGuestGuidePage';
+import { AdminGuestGuidePage } from '../pages/AdminGuestGuidePage'; // 🆕 Admin Guia
 
 // Lost & Found Pages
 import { LostAndFoundLayout } from '../pages/lostAndFound/LostAndFoundLayout';
@@ -131,6 +133,11 @@ export const router = createBrowserRouter([
     path: '/termo/:token',
     element: <PublicTermSignaturePage />,
   },
+  // 🆕 Rota do Guia Digital do Hóspede
+  {
+    path: '/guia/:aptNumber/:token',
+    element: <PublicGuestGuidePage />,
+  },
   {
     path: '/',
     element: (
@@ -148,7 +155,7 @@ export const router = createBrowserRouter([
 
       // ── Achados & Perdidos ──────────────────────────────────────────
       {
-        path: 'achados-e-perdidos', // ← CORRIGIDO: português
+        path: 'achados-e-perdidos',
         element: <LostAndFoundLayout />,
         children: [
           { index: true,        element: <LostAndFoundListPage /> },
@@ -187,6 +194,7 @@ export const router = createBrowserRouter([
 
       { path: 'admin/usuarios', element: <AdminRoute><AdminUsersPage /></AdminRoute> },
       { path: 'admin/termos',   element: <AdminRoute><TermSignaturesPage /></AdminRoute> },
+      { path: 'admin/guia',     element: <AdminRoute><AdminGuestGuidePage /></AdminRoute> }, // 🆕
     ],
   },
 ]);

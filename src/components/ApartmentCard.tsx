@@ -4,7 +4,7 @@ import type { Apartment } from '../types';
 import { useApartmentActions } from '../hooks/useApartmentActions';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../contexts/AuthContext';
-import { updateApartmentPhone } from '../services/apartmentService';
+import { updateApartmentPhone, getGuestGuideLink, getExistingGuideLink } from '../services/apartmentService';
 import { sendWhatsAppMessage } from '../utils/whatsappMessages';
 import { ApartmentHistoryModal } from '../components/ApartmentHistoryModal';
 import { ApartmentHeader } from './apartment/ApartmentHeader';
@@ -76,6 +76,11 @@ export const ApartmentCard = memo(function ApartmentCard({
   const [pendingTermCountryCode, setPendingTermCountryCode] = useState('+55');
   const [pendingTermPax, setPendingTermPax] = useState(1);
 
+  // 🆕 Estados do Guia do Hóspede
+  const [showShareGuideModal, setShowShareGuideModal] = useState(false);
+  const [guideLink, setGuideLink] = useState('');
+  const [sharingGuide, setSharingGuide] = useState(false);
+
   // ── Handlers de Check-in ──────────────────────────────────────────────────
 
   const onCheckinConfirm = useCallback(
@@ -83,24 +88,20 @@ export const ApartmentCard = memo(function ApartmentCard({
       const { guestName, pax, phone, countryCode } = checkinData;
       const fullPhone = phone?.trim() ? `${countryCode} ${phone}` : '';
 
-      // Faz o check-in primeiro
       const result = await handleCheckin(aptNumber, guestName, pax, fullPhone);
       if (result.success) {
         showToast(`Check-in realizado! Apto ${aptNumber} — ${guestName}`, 'success');
         setShowCheckinModal(false);
 
-        // Se tem WhatsApp, pergunta idioma E envia mensagem
         if (phone?.trim()) {
-          // NÃO sobrescreve phone com fullPhone — mantém separado!
           setPendingCheckinData({
             guestName,
             pax,
-            phone, // número puro (sem código)
-            countryCode // código do país
+            phone,
+            countryCode
           });
           setShowLanguageModal(true);
         } else {
-          // Sem WhatsApp — abre direto o modal do termo
           setPendingTermGuest(guestName);
           setPendingTermPhone(phone || '');
           setPendingTermCountryCode(countryCode); 
@@ -121,13 +122,12 @@ export const ApartmentCard = memo(function ApartmentCard({
 
       const { guestName, pax, phone, countryCode } = pendingCheckinData;
 
-      // CORREÇÃO: Definir as variáveis fora do if para uso posterior
       const cleanCode = countryCode.replace(/\D/g, '');
       const cleanPhone = phone.replace(/\D/g, '');
       const fullPhone = `${cleanCode}${cleanPhone}`;
       
       if (phone?.trim()) {
-        console.log('📱 Enviando WhatsApp para:', fullPhone); // Debug
+        console.log('📱 Enviando WhatsApp para:', fullPhone);
 
         const fallbackName =
           language === 'pt'
@@ -143,10 +143,9 @@ export const ApartmentCard = memo(function ApartmentCard({
 
       setShowLanguageModal(false);
 
-      // Abrir modal do termo
       setPendingTermGuest(guestName);
-      setPendingTermPhone(cleanPhone); // Agora cleanPhone está definido
-      setPendingTermCountryCode(cleanCode); // Agora cleanCode está definido
+      setPendingTermPhone(cleanPhone);
+      setPendingTermCountryCode(cleanCode);
       setPendingTermPax(pax);
       setShowTermModal(true);
 
@@ -269,6 +268,27 @@ export const ApartmentCard = memo(function ApartmentCard({
     setShowTermModal(false);
   }, []);
 
+  // ── Handler do Guia do Hóspede 🆕 ────────────────────────────────────────
+
+  const handleShareGuide = useCallback(async () => {
+    setSharingGuide(true);
+    
+    try {
+      let link = await getExistingGuideLink(aptNumber);
+      
+      if (!link) {
+        link = await getGuestGuideLink(aptNumber, data.guest, data.phone);
+      }
+      
+      setGuideLink(link);
+      setShowShareGuideModal(true);
+    } catch (error) {
+      showToast('Erro ao gerar link do guia', 'error');
+    } finally {
+      setSharingGuide(false);
+    }
+  }, [aptNumber, data.guest, data.phone, showToast]);
+
   // ── Handlers de modal simplificados ──────────────────────────────────────
 
   const openCheckin = useCallback(() => setShowCheckinModal(true), []);
@@ -373,6 +393,7 @@ export const ApartmentCard = memo(function ApartmentCard({
           onCheckin={openCheckin}
           onCheckout={openCheckout}
           onHistory={openHistory}
+          onShareGuide={handleShareGuide}
         />
       </article>
 
@@ -448,6 +469,83 @@ export const ApartmentCard = memo(function ApartmentCard({
         onSuccess={handleTermSuccess}
         onSkip={handleTermSkip}
       />
+
+      {/* 🆕 Modal de Compartilhar Guia do Hóspede */}
+      {showShareGuideModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-5 w-full max-w-sm mx-auto animate-slide-up">
+            <h2 className="text-lg font-bold mb-3 text-gray-800 dark:text-white">
+              📱 Guia do Hóspede
+            </h2>
+            
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+              Compartilhe este link com {data.guest} para acessar o guia digital:
+            </p>
+            
+            {sharingGuide ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <span className="ml-3 text-sm text-gray-500 dark:text-gray-400">Gerando link...</span>
+              </div>
+            ) : (
+              <>
+                <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 mb-3">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Link do guia:</p>
+                  <p className="text-sm font-mono text-blue-600 dark:text-blue-400 break-all select-all">
+                    {guideLink}
+                  </p>
+                </div>
+                
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(guideLink);
+                      showToast('Link copiado! 📋', 'success');
+                    }}
+                    className="flex-1 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm"
+                  >
+                    📋 Copiar Link
+                  </button>
+                  
+                  {data.phone && (
+                    <button
+                      onClick={() => {
+                        const message = encodeURIComponent(
+                          `Olá ${data.guest}! 🌊\n\n` +
+                          `Acesse seu Guia Digital do Hotel da Pipa com todas as informações da sua estadia:\n\n` +
+                          `${guideLink}\n\n` +
+                          `Dúvidas? É só chamar! 😊`
+                        );
+                        window.open(`https://wa.me/${data.phone?.replace(/\D/g, '')}?text=${message}`, '_blank');
+                      }}
+                      className="flex-1 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center justify-center gap-1"
+                    >
+                      💬 WhatsApp
+                    </button>
+                  )}
+                </div>
+                
+                {!data.phone && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-3 text-center">
+                    ⚠️ Hóspede sem WhatsApp cadastrado. Compartilhe o link manualmente.
+                  </p>
+                )}
+              </>
+            )}
+            
+            <button
+              onClick={() => {
+                setShowShareGuideModal(false);
+                setGuideLink('');
+              }}
+              disabled={sharingGuide}
+              className="w-full mt-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-200 text-sm disabled:opacity-50"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 });
