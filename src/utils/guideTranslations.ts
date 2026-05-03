@@ -170,8 +170,9 @@ const translations: Record<GuideLanguage, Record<TranslationKey, string>> = {
 };
 
 export function useTranslation(language: GuideLanguage) {
-  const t = (key: TranslationKey): string => {
-    return translations[language]?.[key] || translations['pt'][key] || key;
+  const t = (key: string): string => {
+    const tk = key as TranslationKey;
+    return translations[language]?.[tk] || translations['pt'][tk] || key;
   };
 
   return { t };

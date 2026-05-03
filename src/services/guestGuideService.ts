@@ -3,7 +3,7 @@
 import { doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import { v4 as uuidv4 } from 'uuid';
-import type { GuestGuideConfig, GuestGuideContent, GuideLanguage, GuestToken } from '../types/guestGuide.types';
+import type { GuestGuideConfig, GuestGuideContent, GuideLanguage, GuestToken, GuidePlace } from '../types/guestGuide.types';
 
 // Coleções no Firestore
 const TOKENS_COLLECTION = 'guestTokens';
@@ -12,6 +12,52 @@ const GUIDE_CONFIG_DOC = 'config/guestGuide';
 // ============================================================
 // CONFIGURAÇÕES DO GUIA (Admin)
 // ============================================================
+
+// Lugares padrão
+const DEFAULT_PLACES: GuidePlace[] = [
+  {
+    id: 'praia-pipa',
+    name: { pt: 'Praia da Pipa', es: 'Playa de Pipa', en: 'Pipa Beach' },
+    description: { 
+      pt: 'A praia principal, com falésias e piscinas naturais. Perfeita para surf e banho de mar.', 
+      es: 'La playa principal, con acantilados y piscinas naturales. Perfecta para surf y baño.', 
+      en: 'The main beach, with cliffs and natural pools. Perfect for surfing and swimming.' 
+    },
+    category: 'beach',
+    lat: -6.2295,
+    lng: -35.0486,
+    icon: '🏖️',
+    order: 1
+  },
+  {
+    id: 'praia-amor',
+    name: { pt: 'Praia do Amor', es: 'Playa del Amor', en: 'Love Beach' },
+    description: { 
+      pt: 'Famosa pelo formato de coração vista do mirante. Ótima para fotos e surf.', 
+      es: 'Famosa por su forma de corazón vista desde el mirador. Ideal para fotos y surf.', 
+      en: 'Famous for its heart shape seen from the viewpoint. Great for photos and surfing.' 
+    },
+    category: 'beach',
+    lat: -6.2220,
+    lng: -35.0460,
+    icon: '❤️',
+    order: 2
+  },
+  {
+    id: 'restaurante-pipa',
+    name: { pt: 'Restaurante Exemplo', es: 'Restaurante Ejemplo', en: 'Example Restaurant' },
+    description: { 
+      pt: 'Gastronomia local com frutos do mar frescos e vista para o mar.', 
+      es: 'Gastronomía local con mariscos frescos y vista al mar.', 
+      en: 'Local cuisine with fresh seafood and ocean view.' 
+    },
+    category: 'restaurant',
+    lat: -6.2310,
+    lng: -35.0500,
+    icon: '🍽️',
+    order: 3
+  }
+];
 
 // Conteúdo padrão (fallback se não existir no Firestore)
 const DEFAULT_CONTENT: Record<GuideLanguage, GuestGuideContent> = {
@@ -36,7 +82,8 @@ const DEFAULT_CONTENT: Record<GuideLanguage, GuestGuideContent> = {
       '<p>Check-out até às <strong>12h</strong>. Danos ou extravios serão cobrados no check-out.</p>'
     ],
     beachInfo: '<p>A Praia da Pipa é conhecida por suas falésias, águas mornas e piscinas naturais. Confira a <strong>Tábua de Maré</strong> para melhores horários.</p>',
-    photos: []
+    photos: [],
+    places: DEFAULT_PLACES
   },
   es: {
     wifi: { network: 'Hotel da Pipa', password: 'paraiso20' },
@@ -59,7 +106,8 @@ const DEFAULT_CONTENT: Record<GuideLanguage, GuestGuideContent> = {
       '<p>Check-out hasta las <strong>12h</strong>. Daños o extravíos serán cobrados en el check-out.</p>'
     ],
     beachInfo: '<p>Praia da Pipa es conocida por sus acantilados, aguas cálidas y piscinas naturales. Consulte la <strong>Tabla de Mareas</strong> para conocer los mejores horarios.</p>',
-    photos: []
+    photos: [],
+    places: DEFAULT_PLACES
   },
   en: {
     wifi: { network: 'Hotel da Pipa', password: 'paraiso20' },
@@ -82,7 +130,8 @@ const DEFAULT_CONTENT: Record<GuideLanguage, GuestGuideContent> = {
       '<p>Check-out is until <strong>12pm</strong>. Damages or lost items will be charged at check-out.</p>'
     ],
     beachInfo: '<p>Praia da Pipa is known for its cliffs, warm waters, and natural pools. Check the <strong>Tide Table</strong> for the best times.</p>',
-    photos: []
+    photos: [],
+    places: DEFAULT_PLACES
   }
 };
 
@@ -94,11 +143,9 @@ export async function getGuideConfig(): Promise<GuestGuideConfig> {
 
     if (docSnap.exists()) {
       const data = docSnap.data() as GuestGuideConfig;
-      // Garante que todos os idiomas existem (merge com default)
       return mergeWithDefaults(data);
     }
 
-    // Retorna o conteúdo padrão
     return {
       id: 'default',
       content: DEFAULT_CONTENT,
@@ -106,7 +153,7 @@ export async function getGuideConfig(): Promise<GuestGuideConfig> {
       updatedBy: 'system'
     };
   } catch (error) {
-    console.error('Erro ao buscar configuração do guia:', error);
+    console.error(`Erro ao buscar configuração do guia: ${error}`);
     return {
       id: 'default',
       content: DEFAULT_CONTENT,
@@ -125,13 +172,18 @@ export async function saveGuideConfig(config: GuestGuideConfig): Promise<void> {
   });
 }
 
-// Mescla configuração salva com defaults (garante que novos campos existam)
+// Mescla configuração salva com defaults
 function mergeWithDefaults(saved: GuestGuideConfig): GuestGuideConfig {
   const merged = { ...saved };
   
   (Object.keys(DEFAULT_CONTENT) as GuideLanguage[]).forEach(lang => {
     if (!merged.content[lang]) {
       merged.content[lang] = DEFAULT_CONTENT[lang];
+    } else {
+      // Garante que places existe em cada idioma
+      if (!merged.content[lang].places || merged.content[lang].places.length === 0) {
+        merged.content[lang].places = DEFAULT_PLACES;
+      }
     }
   });
 
@@ -142,16 +194,15 @@ function mergeWithDefaults(saved: GuestGuideConfig): GuestGuideConfig {
 // TOKENS DOS HÓSPEDES
 // ============================================================
 
-// Gerar token no check-in
 export async function generateGuestToken(
   aptNumber: number,
   guestName: string,
   phone?: string
 ): Promise<{ token: string; url: string }> {
-  const token = uuidv4().slice(0, 8); // Token curto para facilitar digitação
+  const token = uuidv4().slice(0, 8);
   const now = new Date();
   const expiresAt = new Date(now);
-  expiresAt.setDate(expiresAt.getDate() + 30); // Expira em 30 dias (será invalidado no checkout)
+  expiresAt.setDate(expiresAt.getDate() + 30);
 
   const tokenData: GuestToken = {
     token,
@@ -171,7 +222,6 @@ export async function generateGuestToken(
   return { token, url };
 }
 
-// Validar token quando hóspede acessa o guia
 export async function validateGuestToken(
   aptNumber: number,
   token: string
@@ -184,19 +234,17 @@ export async function validateGuestToken(
 
     const data = docSnap.data() as GuestToken;
 
-    // Verificações de segurança
     if (!data.active) return null;
     if (new Date() > new Date(data.expiresAt)) return null;
     if (data.aptNumber !== aptNumber) return null;
 
     return data;
   } catch (error) {
-    console.error('Erro ao validar token:', error);
+    console.error(`Erro ao validar token: ${error}`);
     return null;
   }
 }
 
-// Buscar token ativo de um apartamento (para recompartilhar)
 export async function getActiveTokenForApt(aptNumber: number): Promise<GuestToken | null> {
   try {
     const q = query(
@@ -206,31 +254,27 @@ export async function getActiveTokenForApt(aptNumber: number): Promise<GuestToke
     );
     
     const snapshot = await getDocs(q);
-    
     if (snapshot.empty) return null;
     
-    // Pega o primeiro token ativo (mais recente)
     const docs = snapshot.docs.map(d => ({ ...d.data(), token: d.id } as GuestToken));
     docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     
     return docs[0];
   } catch (error) {
-    console.error('Erro ao buscar token ativo:', error);
+    console.error(`Erro ao buscar token ativo: ${error}`);
     return null;
   }
 }
 
-// Invalidar um token específico
 export async function invalidateGuestToken(token: string): Promise<void> {
   try {
     const docRef = doc(db, TOKENS_COLLECTION, token);
     await updateDoc(docRef, { active: false });
   } catch (error) {
-    console.error('Erro ao invalidar token:', error);
+    console.error(`Erro ao invalidar token: ${error}`);
   }
 }
 
-// Invalidar TODOS os tokens de um apartamento (checkout)
 export async function invalidateAllTokensForApt(aptNumber: number): Promise<void> {
   try {
     const q = query(
@@ -250,6 +294,6 @@ export async function invalidateAllTokensForApt(aptNumber: number): Promise<void
     await batch.commit();
     console.log(`🗑️ ${snapshot.docs.length} token(s) invalidados para o apt ${aptNumber}`);
   } catch (error) {
-    console.error('Erro ao invalidar tokens:', error);
+    console.error(`Erro ao invalidar tokens: ${error}`);
   }
 }

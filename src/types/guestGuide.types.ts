@@ -8,23 +8,25 @@ export interface GuestGuideContent {
     password: string;
   };
   schedules: {
-    breakfast: string;      // Ex: "8h às 10h30"
-    afternoonTea: string;   // Ex: "16h às 17h"
-    pool: string;           // Ex: "8h às 20h"
-    checkout: string;       // Ex: "12h"
-    restaurant: string;     // Ex: "12h às 20h (cozinha fecha 19h)"
+    breakfast: string;
+    afternoonTea: string;
+    pool: string;
+    checkout: string;
+    restaurant: string;
   };
   contacts: {
-    reception: string;      // Ex: "+55 84 99999-9999"
-    emergency: string;      // Ex: "190 / 192 / 193"
+    reception: string;
+    emergency: string;
   };
-  rules: string[];          // Cada item é uma regra (HTML permitido)
-  beachInfo: string;        // HTML com informações das praias
-  photos: string[];         // URLs das fotos do guia (não usaremos por enquanto)
+  rules: string[];
+  beachInfo: string;
+  photos: string[];
+  // 🆕 Lugares recomendados
+  places: GuidePlace[];
 }
 
 export interface GuestGuideConfig {
-  id: string; // sempre "default"
+  id: string;
   content: Record<GuideLanguage, GuestGuideContent>;
   updatedAt: string;
   updatedBy: string;
@@ -38,4 +40,16 @@ export interface GuestToken {
   createdAt: string;
   expiresAt: string;
   active: boolean;
+}
+
+// 🆕 Tipo para lugares no mapa
+export interface GuidePlace {
+  id: string;
+  name: Record<GuideLanguage, string>;
+  description: Record<GuideLanguage, string>;
+  category: 'beach' | 'restaurant' | 'bar' | 'shop' | 'attraction' | 'other';
+  lat: number;
+  lng: number;
+  icon?: string; // emoji
+  order: number;
 }

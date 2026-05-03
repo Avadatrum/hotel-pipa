@@ -3,14 +3,14 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { usePermission } from '../hooks/usePermission';
-import { ChangePasswordModal } from './ChangePasswordModal'; // 🆕
+import { ChangePasswordModal } from './ChangePasswordModal';
 
 export function UserMenu() {
   const { user, logout } = useAuth();
   const { canManageUsers } = usePermission();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false); // 🆕
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -59,7 +59,20 @@ export function UserMenu() {
               </span>
             </div>
             
-            {/* 🆕 Opção Alterar Senha */}
+            {/* 🆕 Editar Guia do Hóspede (só admin) */}
+            {user.role === 'admin' && (
+              <button
+                onClick={() => {
+                  navigate('/admin/guia');
+                  setIsOpen(false);
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
+              >
+                📱 Editar Guia do Hóspede
+              </button>
+            )}
+            
+            {/* Alterar Senha */}
             <button
               onClick={() => {
                 setShowPasswordModal(true);
@@ -96,7 +109,7 @@ export function UserMenu() {
         )}
       </div>
 
-      {/* 🆕 Modal de Alterar Senha */}
+      {/* Modal de Alterar Senha */}
       <ChangePasswordModal
         isOpen={showPasswordModal}
         onClose={() => setShowPasswordModal(false)}
