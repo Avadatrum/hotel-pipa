@@ -157,6 +157,102 @@ export async function updateApartmentPhone(aptNumber: number, phone: string) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// TRANSFERÊNCIA DE HÓSPEDE
+// ═══════════════════════════════════════════════════════════
+
+export async function transferGuest(
+  fromApt: number,
+  toApt: number
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // 1. Buscar dados do apartamento de origem
+    const fromRef = doc(db, 'apartments', String(fromApt));
+    const fromSnap = await getDoc(fromRef);
+    
+    if (!fromSnap.exists()) {
+      return { success: false, error: 'Apartamento de origem não encontrado' };
+    }
+    
+    const fromData = fromSnap.data() as Apartment;
+    
+    if (!fromData.occupied) {
+      return { success: false, error: 'Apartamento de origem não está ocupado' };
+    }
+    
+    // 2. Verificar se o apartamento de destino está vago
+    const toRef = doc(db, 'apartments', String(toApt));
+    const toSnap = await getDoc(toRef);
+    
+    if (toSnap.exists()) {
+      const toData = toSnap.data() as Apartment;
+      if (toData.occupied) {
+        return { success: false, error: `Apartamento ${toApt} já está ocupado` };
+      }
+    }
+    
+    // 3. Transferir dados do hóspede
+    const guestData: Partial<Apartment> = {
+      occupied: true,
+      guest: fromData.guest,
+      pax: fromData.pax,
+      phone: fromData.phone || '',
+      chips: fromData.chips,
+      towels: fromData.towels,
+    };
+    
+    // 4. Atualizar apartamento de destino (check-in)
+    await setDoc(toRef, guestData, { merge: true });
+    
+    // 5. Limpar apartamento de origem (check-out)
+    await setDoc(fromRef, {
+      occupied: false,
+      guest: '',
+      pax: 0,
+      chips: 0,
+      towels: 0,
+      phone: '',
+    }, { merge: true });
+    
+    // 6. Registrar nos logs
+    const now = new Date();
+    const time = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const date = now.toLocaleDateString('pt-BR');
+    
+    // Log de saída
+    await addWithAudit('log', {
+      apt: fromApt,
+      msg: `🔄 Transferência — ${fromData.guest} transferido para Apto ${toApt}`,
+      type: 'checkout',
+      time,
+      date,
+      ts: Date.now(),
+    }, currentUserId, currentUserName);
+    
+    // Log de entrada
+    await addWithAudit('log', {
+      apt: toApt,
+      msg: `🔄 Transferência — ${fromData.guest} veio do Apto ${fromApt} | ${fromData.pax} hóspede(s) | ${fromData.chips} ficha(s) | ${fromData.towels} toalha(s)`,
+      type: 'checkin',
+      time,
+      date,
+      ts: Date.now() + 1, // Para garantir ordem
+    }, currentUserId, currentUserName);
+    
+    // 7. Invalidar guia do hóspede antigo
+    await invalidateAllTokensForApt(fromApt);
+    
+    return { success: true };
+    
+  } catch (error) {
+    console.error('Erro na transferência:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Erro desconhecido na transferência' 
+    };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // GUIA DO HÓSPEDE
 // ═══════════════════════════════════════════════════════════
 

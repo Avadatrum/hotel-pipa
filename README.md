@@ -75,6 +75,23 @@ hotel-pipa
 │  │  │  ├─ ToursTable.tsx
 │  │  │  └─ VendorRanking.tsx
 │  │  ├─ Footer.tsx
+│  │  ├─ guestGuide
+│  │  │  ├─ CopyButton.tsx
+│  │  │  ├─ ErrorScreen.tsx
+│  │  │  ├─ GuestHeader.tsx
+│  │  │  ├─ GuideCard.tsx
+│  │  │  ├─ HeroHeader.tsx
+│  │  │  ├─ icons
+│  │  │  │  └─ index.tsx
+│  │  │  ├─ index.ts
+│  │  │  ├─ LinkCard.tsx
+│  │  │  ├─ LoadingScreen.tsx
+│  │  │  ├─ NavigationMenu.tsx
+│  │  │  ├─ PDFCard.tsx
+│  │  │  ├─ PDFViewerModal.tsx
+│  │  │  ├─ PlacesMapModal.tsx
+│  │  │  ├─ ScheduleItem.tsx
+│  │  │  └─ TaxiSection.tsx
 │  │  ├─ Layout.tsx
 │  │  ├─ LossesPanel.tsx
 │  │  ├─ lostAndFound
@@ -106,7 +123,9 @@ hotel-pipa
 │  │  │  └─ OSTable.tsx
 │  │  ├─ TabuaMare
 │  │  │  ├─ SendTideModal.tsx
-│  │  │  └─ TabuaMareWidget.tsx
+│  │  │  ├─ TabuaMareWidget.tsx
+│  │  │  └─ TideWidgetPremium.tsx
+│  │  ├─ TaxiNotification.tsx
 │  │  ├─ Toast.tsx
 │  │  └─ UserMenu.tsx
 │  ├─ contexts
@@ -120,6 +139,7 @@ hotel-pipa
 │  │  ├─ useApartmentActions.ts
 │  │  ├─ useApartments.ts
 │  │  ├─ useFirestore.ts
+│  │  ├─ useGuestGuide.ts
 │  │  ├─ useLostAndFound.ts
 │  │  ├─ useNavigation.ts
 │  │  ├─ usePermission.ts
@@ -130,6 +150,7 @@ hotel-pipa
 │  │  └─ useTowelValidation.ts
 │  ├─ main.tsx
 │  ├─ pages
+│  │  ├─ AdminGuestGuidePage.tsx
 │  │  ├─ AdminUsersPage.tsx
 │  │  ├─ ApartmentsPage.tsx
 │  │  ├─ commissions
@@ -148,6 +169,7 @@ hotel-pipa
 │  │  │  ├─ LostAndFoundReportsPage.tsx
 │  │  │  └─ LostAndFoundScanPage.tsx
 │  │  ├─ LostAndFoundPage.tsx
+│  │  ├─ PublicGuestGuidePage.tsx
 │  │  ├─ PublicOSPage.tsx
 │  │  ├─ PublicTermSignaturePage.tsx
 │  │  ├─ PublicTourPage.tsx
@@ -170,17 +192,20 @@ hotel-pipa
 │  │  ├─ authService.ts
 │  │  ├─ communicationTourService.ts
 │  │  ├─ firebase.ts
+│  │  ├─ guestGuideService.ts
 │  │  ├─ lostAndFoundService.ts
 │  │  ├─ seedService.ts
 │  │  ├─ serviceOrderService.ts
 │  │  ├─ storageService.ts
 │  │  ├─ tabuaMareService.ts
+│  │  ├─ taxiService.ts
 │  │  ├─ termService.ts
 │  │  └─ towelService.ts
 │  ├─ styles
 │  │  └─ index.css
 │  ├─ types
 │  │  ├─ commission.types.ts
+│  │  ├─ guestGuide.types.ts
 │  │  ├─ html5-qrcode.d.ts
 │  │  ├─ index.ts
 │  │  ├─ lostAndFound.types.ts
@@ -189,8 +214,10 @@ hotel-pipa
 │  └─ utils
 │     ├─ commissionCalculations.ts
 │     ├─ formatHelpers.ts
+│     ├─ guideTranslations.ts
 │     ├─ osHelpers.ts
 │     ├─ phoneFormatter.ts
+│     ├─ soundPlayer.ts
 │     ├─ tideMessageFormatter.ts
 │     └─ whatsappMessages.ts
 ├─ storage.rules

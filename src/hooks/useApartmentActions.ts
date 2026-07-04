@@ -1,6 +1,6 @@
 // src/hooks/useApartmentActions.ts
 import { useState } from 'react';
-import { doCheckin, doCheckout, adjustItem } from '../services/apartmentService';
+import { doCheckin, doCheckout, adjustItem, transferGuest } from '../services/apartmentService';
 
 export function useApartmentActions() {
   const [loading, setLoading] = useState(false);
@@ -56,11 +56,33 @@ export function useApartmentActions() {
     }
   };
 
+  // 🆕 Handler de transferência
+  const handleTransfer = async (fromApt: number, toApt: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await transferGuest(fromApt, toApt);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Erro na transferência');
+      }
+      
+      return { success: true };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro na transferência';
+      setError(message);
+      return { success: false, error: message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     loading,
     error,
     handleCheckin,
     handleCheckout,
-    handleAdjust
+    handleAdjust,
+    handleTransfer, // 🆕
   };
 }

@@ -159,7 +159,7 @@ export function ReceiptsPage() {
       </div>
       <div class="text-sm text-justify leading-relaxed mb-4">
         RECEBI da empresa <strong>EG PRESTADORA DE SERVIÇO LTDA</strong>, ente jurídico de direito privado,
-        inscrito no CNPJ/MF sob o nº 46.619.2013/001-05, com sede na Av Campos Sales, nº382,
+        inscrito no CNPJ/MF sob o nº 10.824.573/0001-93, com sede na Av Campos Sales, nº382,
         Petropólis, Natal/RN, a importância de <strong>${valueExtenso || valueFormatted}</strong> (R$ ${valueFormatted})
         referente a ${data.ref || 'serviço prestado'}${periodText} do que lhe dou plena quitação pelo
         recebimento do mesmo.${extraText}

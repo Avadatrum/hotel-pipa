@@ -17,6 +17,7 @@ import { EditPhoneModal } from './apartment/EditPhoneModal';
 import { LanguageSelectionModal } from './apartment/LanguageSelectionModal';
 import { TowelSignatureModal } from './apartment/TowelSignatureModal';
 import { TermSignatureModal } from './apartment/TermSignatureModal';
+import { TransferModal } from './apartment/TransferModal'; // 🆕
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ export const ApartmentCard = memo(function ApartmentCard({
 }: ApartmentCardProps) {
   const { showToast } = useToast();
   const { user } = useAuth();
-  const { loading, handleCheckin, handleCheckout, handleAdjust } = useApartmentActions();
+  const { loading, handleCheckin, handleCheckout, handleAdjust, handleTransfer } = useApartmentActions(); // 🆕 handleTransfer
 
   // Estados dos modais
   const [showCheckinModal, setShowCheckinModal] = useState(false);
@@ -67,6 +68,7 @@ export const ApartmentCard = memo(function ApartmentCard({
   const [showEditPhoneModal, setShowEditPhoneModal] = useState(false);
   const [showTowelModal, setShowTowelModal] = useState(false);
   const [showTermModal, setShowTermModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false); // 🆕
 
   // Estados auxiliares
   const [pendingCheckinData, setPendingCheckinData] = useState<CheckinData | null>(null);
@@ -289,6 +291,29 @@ export const ApartmentCard = memo(function ApartmentCard({
     }
   }, [aptNumber, data.guest, data.phone, showToast]);
 
+  // ── Handler de Transferência 🆕 ──────────────────────────────────────────
+
+  const openTransfer = useCallback(() => setShowTransferModal(true), []);
+  const closeTransfer = useCallback(() => setShowTransferModal(false), []);
+
+  const onTransferConfirm = useCallback(
+    async (toAptNumber: number) => {
+      const result = await handleTransfer(aptNumber, toAptNumber);
+      
+      if (result.success) {
+        showToast(
+          `Hóspede transferido do Apto ${aptNumber} para Apto ${toAptNumber}!`, 
+          'success'
+        );
+        setShowTransferModal(false);
+        onSuccess?.();
+      } else {
+        showToast(`Erro: ${result.error}`, 'error');
+      }
+    },
+    [aptNumber, handleTransfer, onSuccess, showToast],
+  );
+
   // ── Handlers de modal simplificados ──────────────────────────────────────
 
   const openCheckin = useCallback(() => setShowCheckinModal(true), []);
@@ -383,6 +408,24 @@ export const ApartmentCard = memo(function ApartmentCard({
               "
             >
               ✍️ Registrar assinatura digital
+            </button>
+
+            {/* 🆕 Botão de Transferência */}
+            <button
+              onClick={openTransfer}
+              disabled={loading}
+              className="
+                w-full mt-2 px-3 py-1.5 rounded-lg text-xs font-medium
+                flex items-center justify-center gap-1.5 transition-all duration-150
+                bg-blue-50 dark:bg-blue-900/20
+                border border-blue-300 dark:border-blue-700
+                text-blue-800 dark:text-blue-200
+                hover:bg-blue-100 dark:hover:bg-blue-900/40
+                active:scale-[0.98]
+                disabled:opacity-40 disabled:cursor-not-allowed
+              "
+            >
+              🔄 Transferir Hóspede
             </button>
           </>
         )}
@@ -546,6 +589,19 @@ export const ApartmentCard = memo(function ApartmentCard({
           </div>
         </div>
       )}
+
+      {/* 🆕 Modal de Transferência */}
+      <TransferModal
+        isOpen={showTransferModal}
+        fromAptNumber={aptNumber}
+        guestName={data.guest || ''}
+        currentPax={data.pax}
+        currentChips={data.chips}
+        currentTowels={data.towels}
+        loading={loading}
+        onClose={closeTransfer}
+        onConfirm={onTransferConfirm}
+      />
     </>
   );
 });
